@@ -1,0 +1,39 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Generated application files
+/output/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Generated files in root (legacy - если остались)
+/models.py
+/admin.py
+/crud/
+/requirements.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db

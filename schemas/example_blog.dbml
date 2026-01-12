@@ -1,0 +1,105 @@
+Project Blog {
+  database_type: 'PostgreSQL'
+  Note: 'Simple blog database schema example'
+}
+
+Table users {
+  id serial [pk, note: 'User ID']
+  username text [not null, unique, note: 'Unique username']
+  email text [not null, unique, note: 'User email address']
+  password_hash text [not null, note: 'Hashed password']
+  full_name text [note: 'Full name of the user']
+  bio text [note: 'User biography']
+  avatar_url text [note: 'URL to user avatar image']
+  is_active boolean [not null, default: true, note: 'Is user account active']
+  is_admin boolean [not null, default: false, note: 'Is user an administrator']
+  created_at timestamp [not null, note: 'Account creation timestamp']
+  updated_at timestamp [note: 'Last update timestamp']
+
+  Note: 'Blog users and authors'
+}
+
+Table posts {
+  id serial [pk, note: 'Post ID']
+  title text [not null, note: 'Post title']
+  slug text [not null, unique, note: 'URL-friendly post identifier']
+  content text [not null, note: 'Post content in markdown']
+  excerpt text [note: 'Short excerpt/summary']
+  author_id integer [not null, note: 'Reference to user who created the post']
+  status post_status [not null, default: 'draft', note: 'Post publication status']
+  featured_image text [note: 'URL to featured image']
+  views_count integer [not null, default: 0, note: 'Number of views']
+  published_at timestamp [note: 'Publication timestamp']
+  created_at timestamp [not null, note: 'Post creation timestamp']
+  updated_at timestamp [note: 'Last update timestamp']
+
+  Note: 'Blog posts'
+}
+
+enum post_status {
+  draft
+  published
+  archived
+}
+
+Table categories {
+  id serial [pk, note: 'Category ID']
+  name text [not null, unique, note: 'Category name']
+  slug text [not null, unique, note: 'URL-friendly category identifier']
+  description text [note: 'Category description']
+  created_at timestamp [not null, note: 'Category creation timestamp']
+
+  Note: 'Post categories'
+}
+
+Table post_categories {
+  id serial [pk, note: 'Relation ID']
+  post_id integer [not null, note: 'Reference to post']
+  category_id integer [not null, note: 'Reference to category']
+  created_at timestamp [not null, note: 'Relation creation timestamp']
+
+  Note: 'Many-to-many relationship between posts and categories'
+}
+
+Table tags {
+  id serial [pk, note: 'Tag ID']
+  name text [not null, unique, note: 'Tag name']
+  slug text [not null, unique, note: 'URL-friendly tag identifier']
+  created_at timestamp [not null, note: 'Tag creation timestamp']
+
+  Note: 'Post tags'
+}
+
+Table post_tags {
+  id serial [pk, note: 'Relation ID']
+  post_id integer [not null, note: 'Reference to post']
+  tag_id integer [not null, note: 'Reference to tag']
+  created_at timestamp [not null, note: 'Relation creation timestamp']
+
+  Note: 'Many-to-many relationship between posts and tags'
+}
+
+Table comments {
+  id serial [pk, note: 'Comment ID']
+  post_id integer [not null, note: 'Reference to post']
+  author_id integer [note: 'Reference to user (null for anonymous)']
+  parent_id integer [note: 'Reference to parent comment for nested comments']
+  content text [not null, note: 'Comment content']
+  author_name text [note: 'Name for anonymous comments']
+  author_email text [note: 'Email for anonymous comments']
+  is_approved boolean [not null, default: false, note: 'Is comment approved by moderator']
+  created_at timestamp [not null, note: 'Comment creation timestamp']
+  updated_at timestamp [note: 'Last update timestamp']
+
+  Note: 'Post comments'
+}
+
+// Relationships
+Ref: posts.author_id > users.id
+Ref: post_categories.post_id > posts.id
+Ref: post_categories.category_id > categories.id
+Ref: post_tags.post_id > posts.id
+Ref: post_tags.tag_id > tags.id
+Ref: comments.post_id > posts.id
+Ref: comments.author_id > users.id
+Ref: comments.parent_id > comments.id

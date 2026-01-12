@@ -1,0 +1,223 @@
+Project AI_Skills_Management {
+  database_type: 'PostgreSQL'
+  Note: 'Схема базы данных для управления AI навыками, ролями и сценариями.'
+}
+
+// --------------------------------------------------------------------------------
+// Справочники и Структурные единицы
+// --------------------------------------------------------------------------------
+enum periodicity {
+  daily
+  weekly
+  monthly
+  quarterly
+}
+
+Table typical_scenario {
+  id serial4 [pk]
+  name text [not null]
+  periodicity periodicity [not null]
+  created_at timestamp [not null]
+}
+ref: scenarios.typical_scenario_id - typical_scenario.id
+
+
+
+Table roles [note: "Содержит список ролей, для которых разработаны/требуется разработать ai навыки."] {
+  id serial4 [primary key, note: "Идентификатор записи"]
+  short_name text [not null, note: "Краткое наименование роли пользователя ai_навыка"]
+  name text [not null, note: "Полное наименование роли пользователя ai_навыка"]
+  struct_post_id bigint [not null, note: "Связь с ролью из орг.структуры ИСУ"]
+  direction_id bigint [not null, note: "Подразделение роли пользователя"]
+  description text [note: "Описание роли"]
+  is_active boolean [not null, default: True, note: "Признак актуальности роли"]
+  created_at timestamp [not null, note: "Дата создания роли"]
+  updated_at timestamp [note: "Дата изменения роли"]
+}
+ref: roles.direction_id - isu_lib_directions.id
+ref: roles.struct_post_id - isu_lib_struct_posts.id
+
+Table developer_teams {
+  id serial [pk, increment]
+  name text [note: 'Название команды (например: AI Core Team, Devtools и т.д.)']
+  
+  Note: 'Содержит перечень команд разрабатывающих ai навыки (справочник)'
+}
+
+Table products {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  direction_id bigint [not null, note: 'Идентификатор подразделения - владельца продукта']
+  name text [not null, note: 'Наименование банковского продукта']
+  
+  Note: 'Содержит справочник продуктов к которым относится ai навык.'
+}
+Table isu_lib_directions{
+  id bigserial [primary key]
+}
+
+table isu_lib_struct_posts{
+  id bigserial [primary key]
+  }
+
+// --------------------------------------------------------------------------------
+// Функции и Компетенции
+// --------------------------------------------------------------------------------
+
+Table competencies {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  short_name text [not null, note: 'Краткое наименование компетенции']
+  name text [not null, note: 'Полное наименование компетенции']
+  role_id integer [not null, note: 'Идентификатор роли roles.id']
+  description text [null, note: 'Описание компетенции']
+  created_at timestamp [not null, note: 'Дата создания компетенции']
+  updated_at timestamp [null, note: 'Дата изменения компетенции']
+
+  Note: 'Содержит перечень компетенций, которыми должен обладать сотрудник роли.'
+}
+
+Table function_groups {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  name text [not null, note: 'Наименование группы функций']
+
+  Note: 'Содержит перечень групп функций роли (например: Управление эффективностью, Развитие сотрудников)'
+}
+
+Table functions {
+  id serial [pk, increment, note: 'Идентификатор записи']
+  code varchar [null, note: 'Код функции']
+  name varchar [not null, note: 'Наименование функции']
+  description text [null, note: 'Описание функции']
+  group_id integer [not null, note: 'Ссылка на группу функций']
+  created_at timestamp [not null, note: 'Дата создания']
+  updated_at timestamp [null, note: 'Дата изменения']
+
+  Note: 'Содержит перечень функций руководителя'
+}
+
+Table function_competencies {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  function_id serial4 [not null, note: 'Ссылка на функцию functions.id']
+  competency_id serial4 [not null, note: 'Ссылка на компетенцию competencies.id']
+  created_at timestamp [not null, note: 'Дата создания связи']
+  updated_at timestamp [null, note: 'Дата обновления связи']
+
+  Note: 'Таблица связей функций и компетенций (Многие ко многим)'
+}
+
+// --------------------------------------------------------------------------------
+// AI Навыки
+// --------------------------------------------------------------------------------
+
+Table ai_skills {
+  id serial [pk, increment, note: 'Идентификатор записи']
+  name text [not null, note: 'Наименование навыка']
+  description text [null, note: 'Описание навыка']
+  endpoint_name text [null, note: 'Наименование эндпоинта']
+  tree_code text [not null, note: 'Код дерева навыка']
+  tree_node_id bigint [not null, note: 'Идентификатор узла дерева']
+  product_id integer [null, note: 'Идентификатор продукта навыка']
+  developer_team_id integer [not null, note: 'Идентификатор команды-разработчика навыка']
+  created_at timestamp [not null, note: 'Дата создания']
+  updated_at timestamp [null, note: 'Дата обновления']
+
+  Note: 'Содержит перечень AI Навыков'
+}
+
+// --------------------------------------------------------------------------------
+// Сценарии и Статусы
+// --------------------------------------------------------------------------------
+
+Table scenario_statuses {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  name text [not null, note: 'Наименование статуса (Черновик, Действует, Архив)']
+
+  Note: 'Таблица возможных статусов сценариев (системный справочник)'
+}
+
+Table scenario_action_statuses {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  name text [not null, note: 'Наименование статуса (Черновик, Действует, Архив)']
+
+  Note: 'Таблица возможных статусов действий (системный справочник)'
+}
+
+Table scenarios {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  code varchar [not null, note: 'Код сценария']
+  name varchar [not null, note: 'Наименование сценария']
+  goal text [not null, note: 'Цель (например: Повышение конверсии онбординга)']
+  typical_scenario_id serial4 [not null]
+  role_id serial4 [not null, note: 'Ссылка на роль к которой относится сценарий']
+  status_id integer [not null, note: 'Ссылка на идентификатор статуса']
+  created_at timestamp [not null, note: 'Дата создания']
+  updated_at timestamp [null, note: 'Дата обновления']
+
+  Note: 'Таблица с перечнем сценариев для роли'
+}
+
+Table scenario_stages {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  scenario_id serial4 [not null, note: 'Идентификатор сценария']
+  sequence_number integer [not null, note: 'Порядковый номер этапа']
+  name varchar [not null, note: 'Наименование этапа']
+  description text [not null, note: 'Описание этапа']
+  created_at timestamp [not null, note: 'Дата создания']
+  updated_at timestamp [null, note: 'Дата обновления']
+
+  Note: 'Таблица содержит этапы сценария'
+}
+
+Table scenario_actions {
+  id serial4 [pk, increment, note: 'Идентификатор записи']
+  name text [not null, note: 'Наименование действия']
+  description text [not null, note: 'Описание действия']
+  scenario_stage_id integer [not null, note: 'Идентификатор этапа сценария']
+  skill_id integer [null, note: 'Идентификатор AI навыка']
+  version_type_id serial4 [not null, ref: - version_types.id]
+  action_mode_id serial4 [not null, ref: - action_modes.id] 
+  function_id integer [not null, note: 'Идентификатор функции, используемой в действии']
+  status_id integer [not null, note: 'Идентификатор статуса действия']
+  created_at timestamp [not null, note: 'Дата создания']
+  updated_at timestamp [null, note: 'Дата обновления']
+
+  Note: 'Содержит перечень действия в рамках этапа сценария'
+}
+table version_types{
+    id serial4 [pk]
+    name text [not null, note: 'MVP,DREAM']
+}
+table action_modes{
+    id serial4 [pk]
+    name text [not null, note: 'CO-PILOT,AUTOPILOT']
+}
+
+// --------------------------------------------------------------------------------
+// Связи (Relationships)
+// --------------------------------------------------------------------------------
+
+// Roles & Competencies
+Ref: competencies.role_id > roles.id
+
+// Functions & Groups
+Ref: functions.group_id > function_groups.id
+
+// Function & Competencies (M2M)
+Ref: function_competencies.function_id > functions.id
+Ref: function_competencies.competency_id > competencies.id
+
+// AI Skills
+Ref: ai_skills.product_id > products.id
+Ref: ai_skills.developer_team_id > developer_teams.id
+
+// Scenarios
+Ref: scenarios.role_id > roles.id
+Ref: scenarios.status_id > scenario_statuses.id
+
+// Scenario Stages
+Ref: scenario_stages.scenario_id > scenarios.id
+
+// Scenario Actions
+Ref: scenario_actions.scenario_stage_id > scenario_stages.id
+Ref: scenario_actions.skill_id > ai_skills.id
+Ref: scenario_actions.function_id > functions.id
+Ref: scenario_actions.status_id > scenario_action_statuses.id
