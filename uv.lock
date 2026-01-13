@@ -73,7 +73,7 @@ wheels = [
 ]
 
 [[package]]
-name = "dbml-to-crud"
+name = "dbml-to-code"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

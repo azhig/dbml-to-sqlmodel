@@ -4,7 +4,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from dbml_to_sqlmodel import parse_dbml
+from dbml_to_code.dbml_to_sqlmodel import parse_dbml
 
 
 def test_parse_simple_table():

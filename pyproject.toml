@@ -1,5 +1,5 @@
 [project]
-name = "dbml-to-crud"
+name = "dbml-to-code"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -28,7 +28,7 @@ dev = [
 package = true
 
 [project.scripts]
-dbml-crud = "dbml_to_crud.cli:app"
+dbml-code = "dbml_to_code.cli:app"
 
 [build-system]
 requires = ["hatchling"]

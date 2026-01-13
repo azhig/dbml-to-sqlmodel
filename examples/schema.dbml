@@ -1,0 +1,225 @@
+Project AI_Skills_Management {
+  database_type: 'PostgreSQL'
+  Note: 'Database schema for managing AI skills, roles, and scenarios.'
+}
+
+// --------------------------------------------------------------------------------
+// Reference data and structural units
+// --------------------------------------------------------------------------------
+enum periodicity {
+  daily
+  weekly
+  monthly
+  quarterly
+}
+
+Table typical_scenario {
+  id serial4 [pk]
+  name text [not null]
+  periodicity periodicity [not null]
+  created_at timestamp [not null]
+}
+ref: scenarios.typical_scenario_id - typical_scenario.id
+
+
+
+Table roles [note: "List of roles that require or have AI skills."] {
+  id serial4 [primary key, note: "Record identifier"]
+  short_name text [not null, note: "Short role name for AI skills"]
+  name text [not null, note: "Full role name for AI skills"]
+  struct_post_id bigint [not null, note: "Link to organizational structure role in ISU"]
+  direction_id bigint [not null, note: "Role department"]
+  description text [note: "Role description"]
+  is_active boolean [not null, default: True, note: "Active role flag"]
+  created_at timestamp [not null, note: "Role creation date"]
+  updated_at timestamp [note: "Role update date"]
+}
+ref: roles.direction_id - isu_lib_directions.id
+ref: roles.struct_post_id - isu_lib_struct_posts.id
+
+Table developer_teams {
+  id serial [pk, increment]
+  name text [note: 'Team name (for example: AI Core Team, Devtools, etc.)']
+
+  Note: 'List of teams developing AI skills (reference data)'
+}
+
+Table products {
+  id serial4 [pk, increment, note: 'Record identifier']
+  direction_id bigint [not null, note: 'Owning department identifier']
+  name text [not null, note: 'Banking product name']
+
+  Note: 'Reference list of products related to an AI skill.'
+}
+Table isu_lib_directions{
+  id bigserial [primary key]
+}
+
+table isu_lib_struct_posts{
+  id bigserial [primary key]
+  }
+
+// --------------------------------------------------------------------------------
+// Functions and competencies
+// --------------------------------------------------------------------------------
+
+Table competencies {
+  id serial4 [pk, increment, note: 'Record identifier']
+  short_name text [not null, note: 'Competency short name']
+  name text [not null, note: 'Competency full name']
+  role_id integer [not null, note: 'Role identifier roles.id']
+  description text [null, note: 'Competency description']
+  created_at timestamp [not null, note: 'Competency creation date']
+  updated_at timestamp [null, note: 'Competency update date']
+
+  Note: 'List of competencies required for a role.'
+}
+
+Table function_groups {
+  id serial4 [pk, increment, note: 'Record identifier']
+  name text [not null, note: 'Function group name']
+
+  Note: 'List of role function groups (for example: Performance management, Staff development)'
+}
+
+Table functions {
+  id serial [pk, increment, note: 'Record identifier']
+  code varchar [null, note: 'Function code']
+  name varchar [not null, note: 'Function name']
+  description text [null, note: 'Function description']
+  group_id integer [not null, note: 'Link to function group']
+  created_at timestamp [not null, note: 'Creation date']
+  updated_at timestamp [null, note: 'Update date']
+
+  Note: 'List of manager functions.'
+}
+
+Table function_competencies {
+  id serial4 [pk, increment, note: 'Record identifier']
+  function_id serial4 [not null, note: 'Link to function functions.id']
+  competency_id serial4 [not null, note: 'Link to competency competencies.id']
+  created_at timestamp [not null, note: 'Relationship creation date']
+  updated_at timestamp [null, note: 'Relationship update date']
+
+  Note: 'Function-competency relationships (many-to-many)'
+}
+
+// --------------------------------------------------------------------------------
+// AI skills
+// --------------------------------------------------------------------------------
+
+Table ai_skills {
+  id serial [pk, increment, note: 'Record identifier']
+  name text [not null, note: 'Skill name']
+  description text [null, note: 'Skill description']
+  endpoint_name text [null, note: 'Endpoint name']
+  tree_code text [not null, note: 'Skill tree code']
+  tree_node_id bigint [not null, note: 'Tree node identifier']
+  product_id integer [null, note: 'Skill product identifier']
+  developer_team_id integer [not null, note: 'Developer team identifier']
+  created_at timestamp [not null, note: 'Creation date']
+  updated_at timestamp [null, note: 'Update date']
+
+  Note: 'List of AI skills.'
+}
+
+// --------------------------------------------------------------------------------
+// Scenarios and statuses
+// --------------------------------------------------------------------------------
+
+Table scenario_statuses {
+  id serial4 [pk, increment, note: 'Record identifier']
+  name text [not null, note: 'Status name (Draft, Active, Archived)']
+
+  Note: 'Available scenario statuses (system reference data)'
+}
+
+Table scenario_action_statuses {
+  id serial4 [pk, increment, note: 'Record identifier']
+  name text [not null, note: 'Status name (Draft, Active, Archived)']
+
+  Note: 'Available action statuses (system reference data)'
+}
+
+Table scenarios {
+  id serial4 [pk, increment, note: 'Record identifier']
+  code varchar [not null, note: 'Scenario code']
+  name varchar [not null, note: 'Scenario name']
+  goal text [not null, note: 'Goal (for example: Increase onboarding conversion)']
+  typical_scenario_id serial4 [not null]
+  role_id serial4 [not null, note: 'Role linked to this scenario']
+  status_id integer [not null, note: 'Status identifier']
+  created_at timestamp [not null, note: 'Creation date']
+  updated_at timestamp [null, note: 'Update date']
+
+  Note: 'List of scenarios for a role.'
+}
+
+Table scenario_stages {
+  id serial4 [pk, increment, note: 'Record identifier']
+  scenario_id serial4 [not null, note: 'Scenario identifier']
+  sequence_number integer [not null, note: 'Stage sequence number']
+  name varchar [not null, note: 'Stage name']
+  description text [not null, note: 'Stage description']
+  created_at timestamp [not null, note: 'Creation date']
+  updated_at timestamp [null, note: 'Update date']
+
+  Note: 'Scenario stages.'
+}
+
+Table scenario_actions {
+  id serial4 [pk, increment, note: 'Record identifier']
+  name text [not null, note: 'Action name']
+  description text [not null, note: 'Action description']
+  scenario_stage_id integer [not null, note: 'Scenario stage identifier']
+  skill_id integer [null, note: 'AI skill identifier']
+  version_type_id serial4 [not null, ref: - version_types.id]
+  action_mode_id serial4 [not null, ref: - action_modes.id]
+  function_id integer [not null, note: 'Function used in the action']
+  status_id integer [not null, note: 'Action status identifier']
+  created_at timestamp [not null, note: 'Creation date']
+  updated_at timestamp [null, note: 'Update date']
+
+  Note: 'Actions within a scenario stage.'
+}
+
+table version_types{
+    id serial4 [pk]
+    name text [not null, note: 'MVP, DREAM']
+}
+
+table action_modes{
+    id serial4 [pk]
+    name text [not null, note: 'CO-PILOT, AUTOPILOT']
+}
+
+// --------------------------------------------------------------------------------
+// Relationships
+// --------------------------------------------------------------------------------
+
+// Roles and competencies
+Ref: competencies.role_id > roles.id
+
+// Functions and groups
+Ref: functions.group_id > function_groups.id
+
+// Function and competencies (M2M)
+Ref: function_competencies.function_id > functions.id
+Ref: function_competencies.competency_id > competencies.id
+
+// AI skills
+Ref: ai_skills.product_id > products.id
+Ref: ai_skills.developer_team_id > developer_teams.id
+
+// Scenarios
+Ref: scenarios.role_id > roles.id
+Ref: scenarios.status_id > scenario_statuses.id
+
+// Scenario stages
+Ref: scenario_stages.scenario_id > scenarios.id
+
+// Scenario actions
+Ref: scenario_actions.scenario_stage_id > scenario_stages.id
+Ref: scenario_actions.skill_id > ai_skills.id
+Ref: scenario_actions.function_id > functions.id
+Ref: scenario_actions.status_id > scenario_action_statuses.id

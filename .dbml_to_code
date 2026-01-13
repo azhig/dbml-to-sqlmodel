@@ -2,7 +2,7 @@
   "schema_file": "examples/schema.dbml",
   "output_dir": "output",
   "show_all_files": false,
-  "show_new_content": false,
+  "show_new_content": true,
   "force_overwrite": false,
   "admin_auth_enabled": false
 }

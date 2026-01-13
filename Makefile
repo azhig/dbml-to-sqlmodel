@@ -1,67 +1,67 @@
 .PHONY: help install generate preview info run dev clean db-reset format lint test
 
-# Цвета для вывода
+# Output colors
 GREEN := \033[0;32m
 YELLOW := \033[0;33m
 NC := \033[0m # No Color
 
-help: ## Показать это сообщение помощи
-	@echo "$(GREEN)Доступные команды:$(NC)"
+help: ## Show this help message
+	@echo "$(GREEN)Available commands:$(NC)"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(YELLOW)%-15s$(NC) %s\n", $$1, $$2}'
 
-install: ## Установить зависимости
+install: ## Install dependencies
 	uv sync
 
-# CLI Commands (новый способ - рекомендуется)
+# CLI commands (recommended)
 
-cli: ## Запустить интерактивное меню CLI
-	uv run dbml-crud
+cli: ## Run interactive CLI
+	uv run dbml-code
 
-generate: ## Сгенерировать FastAPI приложение из schema.dbml
-	uv run dbml-crud generate schemas/schema.dbml -o output
-	@echo "$(GREEN)✓ Приложение успешно сгенерировано в output/$(NC)"
+generate: ## Generate FastAPI app from schema.dbml
+	uv run dbml-code generate examples/schema.dbml -o output
+	@echo "$(GREEN)OK: app generated in output/$(NC)"
 
-preview: ## Показать diff изменений без записи файлов
-	uv run dbml-crud preview schemas/schema.dbml -o output
+preview: ## Show diff without writing files
+	uv run dbml-code preview examples/schema.dbml -o output
 
-info: ## Показать файлы и несоответствия генерации
-	uv run dbml-crud info schemas/schema.dbml
+info: ## Show generated files and mismatches
+	uv run dbml-code info examples/schema.dbml
 
-run: ## Запустить сервер (production режим)
+run: ## Run server (production)
 	cd output && uv run python main.py
 
-dev: ## Запустить сервер в режиме разработки с hot-reload
+dev: ## Run server in development mode (hot reload)
 	cd output && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8001
 
-clean: ## Удалить сгенерированные файлы и кэш
+clean: ## Remove generated files and caches
 	rm -rf output/
 	rm -rf __pycache__ .pytest_cache .ruff_cache
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	@echo "$(GREEN)✓ Временные файлы удалены$(NC)"
+	@echo "$(GREEN)OK: temporary files removed$(NC)"
 
-db-reset: ## Удалить базу данных (для пересоздания схемы)
+db-reset: ## Remove database (to recreate schema)
 	rm -f output/database.db
-	@echo "$(GREEN)✓ База данных удалена$(NC)"
+	@echo "$(GREEN)OK: database removed$(NC)"
 
-format: ## Отформатировать код с помощью ruff
+format: ## Format code with ruff
 	uv run ruff format .
-	@echo "$(GREEN)✓ Код отформатирован$(NC)"
+	@echo "$(GREEN)OK: code formatted$(NC)"
 
-lint: ## Проверить код линтером
+lint: ## Lint code
 	uv run ruff check .
 
-test: ## Запустить тесты
+test: ## Run tests
 	uv run pytest tests/ -v
 
-test-watch: ## Запустить тесты в режиме watch
+test-watch: ## Run tests in watch mode
 	uv run pytest-watch tests/ -v
 
-# Комплексные команды
+# Compound commands
 
-fresh: clean generate ## Полная перегенерация: удалить старое + сгенерировать новое
-	@echo "$(GREEN)✓ Приложение полностью перегенерировано$(NC)"
+fresh: clean generate ## Full regeneration: remove old + generate new
+	@echo "$(GREEN)OK: app fully regenerated$(NC)"
 
-restart: db-reset run ## Пересоздать БД и запустить сервер
+restart: db-reset run ## Recreate DB and start server
 
-full-reset: clean db-reset generate run ## Полный сброс: удалить всё, сгенерировать и запустить
-	@echo "$(GREEN)✓ Полный сброс выполнен$(NC)"
+full-reset: clean db-reset generate run ## Full reset: remove all, generate, and run
+	@echo "$(GREEN)OK: full reset complete$(NC)"
