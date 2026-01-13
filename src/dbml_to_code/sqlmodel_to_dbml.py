@@ -67,7 +67,17 @@ def _annotation_to_type(annotation: ast.expr) -> tuple[str, bool]:
     return "str", False
 
 
-def _parse_field_kwargs(call: ast.Call) -> dict[str, object]:
+def _parse_field_kwargs(call: ast.Call, dict_constants: dict[str, dict] = None) -> dict[str, object]:
+    """Parse Field() keyword arguments.
+
+    Args:
+        call: AST Call node for Field()
+        dict_constants: Optional dict mapping variable names to their constant values
+                       (e.g., {"DESCRIPTIONS": {"username": "Unique username"}})
+    """
+    if dict_constants is None:
+        dict_constants = {}
+
     kwargs: dict[str, object] = {}
     for kw in call.keywords:
         if kw.arg is None:
@@ -76,6 +86,17 @@ def _parse_field_kwargs(call: ast.Call) -> dict[str, object]:
             kwargs[kw.arg] = kw.value.value
         elif isinstance(kw.value, ast.Name):
             kwargs[kw.arg] = kw.value.id
+        elif isinstance(kw.value, ast.Subscript):
+            # Handle dictionary subscript: DESCRIPTIONS["username"]
+            if isinstance(kw.value.value, ast.Name) and isinstance(kw.value.slice, ast.Constant):
+                dict_name = kw.value.value.id
+                key = kw.value.slice.value
+                if dict_name in dict_constants and key in dict_constants[dict_name]:
+                    kwargs[kw.arg] = dict_constants[dict_name][key]
+                else:
+                    kwargs[kw.arg] = None
+            else:
+                kwargs[kw.arg] = None
         elif isinstance(kw.value, ast.Lambda):
             kwargs[kw.arg] = "lambda"
         elif isinstance(kw.value, ast.Call) and isinstance(kw.value.func, ast.Name):
@@ -85,7 +106,37 @@ def _parse_field_kwargs(call: ast.Call) -> dict[str, object]:
     return kwargs
 
 
-def _extract_columns(class_def: ast.ClassDef) -> List[_ParsedColumn]:
+def _extract_dict_constants(tree: ast.Module) -> dict[str, dict]:
+    """Extract dictionary constants from module level.
+
+    Returns dict mapping variable names to their constant dict values.
+    Example: {"DESCRIPTIONS": {"username": "Unique username", ...}}
+    """
+    constants = {}
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name) and isinstance(node.value, ast.Dict):
+                # Extract dict constant
+                dict_value = {}
+                for key_node, value_node in zip(node.value.keys, node.value.values):
+                    if isinstance(key_node, ast.Constant) and isinstance(value_node, ast.Constant):
+                        dict_value[key_node.value] = value_node.value
+                if dict_value:
+                    constants[target.id] = dict_value
+    return constants
+
+
+def _extract_columns(class_def: ast.ClassDef, dict_constants: dict[str, dict] = None) -> List[_ParsedColumn]:
+    """Extract columns from a ClassDef node.
+
+    Args:
+        class_def: AST ClassDef node
+        dict_constants: Optional dict of constant dictionaries from module level
+    """
+    if dict_constants is None:
+        dict_constants = {}
+
     columns: List[_ParsedColumn] = []
     for node in class_def.body:
         if not isinstance(node, ast.AnnAssign) or not isinstance(node.target, ast.Name):
@@ -96,7 +147,7 @@ def _extract_columns(class_def: ast.ClassDef) -> List[_ParsedColumn]:
             if isinstance(node.value.func, ast.Name) and node.value.func.id == "Relationship":
                 continue
             if isinstance(node.value.func, ast.Name) and node.value.func.id == "Field":
-                field_kwargs = _parse_field_kwargs(node.value)
+                field_kwargs = _parse_field_kwargs(node.value, dict_constants)
             else:
                 continue
         else:
@@ -157,6 +208,10 @@ def _load_enum_map(models_dir: Path) -> dict[str, str]:
 
 def _parse_model_file(model_file: Path, enum_map: dict[str, str]) -> TableInfo:
     tree = ast.parse(model_file.read_text(encoding="utf-8"))
+
+    # Extract dictionary constants (like DESCRIPTIONS = {...})
+    dict_constants = _extract_dict_constants(tree)
+
     class_map = {node.name: node for node in tree.body if isinstance(node, ast.ClassDef)}
 
     table_class = None
@@ -176,9 +231,9 @@ def _parse_model_file(model_file: Path, enum_map: dict[str, str]) -> TableInfo:
 
     base_columns: List[_ParsedColumn] = []
     if base_class_name and base_class_name in class_map:
-        base_columns = _extract_columns(class_map[base_class_name])
+        base_columns = _extract_columns(class_map[base_class_name], dict_constants)
 
-    table_columns = _extract_columns(table_class)
+    table_columns = _extract_columns(table_class, dict_constants)
 
     dbml_columns: List[ColumnInfo] = []
     seen = set()

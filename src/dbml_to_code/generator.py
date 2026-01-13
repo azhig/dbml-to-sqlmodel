@@ -1,6 +1,5 @@
 """Generator functions for creating FastAPI application files."""
 
-from pathlib import Path
 from typing import Dict
 
 import re
@@ -35,9 +34,16 @@ def create_{table.name}_router(get_session_func):
 """
 
 
-def generate_admin_views(tables: list[TableInfo], admin_auth_enabled: bool = False) -> str:
+def generate_admin_views(
+    tables: list[TableInfo], admin_auth_enabled: bool = False
+) -> str:
     """Generate SQLAdmin views for all tables."""
-    imports = "\n".join([f"from models.{table.name} import {table.name.capitalize()}" for table in tables])
+    imports = "\n".join(
+        [
+            f"from models.{table.name} import {table.name.capitalize()}"
+            for table in tables
+        ]
+    )
 
     if admin_auth_enabled:
         admin_imports = """import os
@@ -112,9 +118,11 @@ def get_icon_for_table(table_name):
 
         code += f"    class {model_name}Admin(ModelView, model={model_name}):\n"
         code += f"        name = '{model_name}'\n"
-        code += f"        name_plural = '{model_name}s'\n"
+        code += f"        name_plural = '{model_name}'\n"
         code += f"        icon = get_icon_for_table('{table.name}')\n"
-        code += f"        column_list = [c.name for c in {model_name}.__table__.columns]\n"
+        code += (
+            f"        column_list = [c.name for c in {model_name}.__table__.columns]\n"
+        )
 
         # Add column_labels with descriptions from notes
         labels = {c.name: c.note for c in table.columns if c.note}
@@ -125,6 +133,19 @@ def get_icon_for_table(table_name):
                 code += f"            '{col_name}': '{note_escaped}',\n"
             code += f"        }}\n"
 
+        # Enable sorting for all columns
+        sortable_columns = [c.name for c in table.columns]
+        code += f"        column_sortable_list = {sortable_columns}\n"
+
+        # Add search for text fields
+        text_types = ['varchar', 'text', 'string', 'str', 'char']
+        searchable_columns = [
+            c.name for c in table.columns
+            if any(t in c.type.lower() for t in text_types)
+        ]
+        if searchable_columns:
+            code += f"        column_searchable_list = {searchable_columns}\n"
+
         code += f"\n    admin.add_view({model_name}Admin)\n\n"
 
     code += "    return admin\n"
@@ -133,9 +154,21 @@ def get_icon_for_table(table_name):
 
 def generate_main_app(tables: list[TableInfo]) -> str:
     """Generate main FastAPI application file."""
-    router_imports = "\n".join([f"from models.{table.name} import create_{table.name}_router" for table in tables])
-    router_creates = "\n".join([f"{table.name}_router = create_{table.name}_router(get_session)" for table in tables])
-    router_includes = "\n".join([f"app.include_router({table.name}_router)" for table in tables])
+    router_imports = "\n".join(
+        [
+            f"from models.{table.name} import create_{table.name}_router"
+            for table in tables
+        ]
+    )
+    router_creates = "\n".join(
+        [
+            f"{table.name}_router = create_{table.name}_router(get_session)"
+            for table in tables
+        ]
+    )
+    router_includes = "\n".join(
+        [f"app.include_router({table.name}_router)" for table in tables]
+    )
 
     return f"""from fastapi import FastAPI
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -150,7 +183,23 @@ load_dotenv()
 
 DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+# Database engine with basic configuration suitable for development
+# For production deployments, consider tuning these parameters:
+#   pool_size - number of connections to keep open (default: 5)
+#   max_overflow - max connections beyond pool_size (default: 10)
+#   pool_pre_ping - verify connections before using (recommended for production)
+#   pool_recycle - recycle connections after N seconds (e.g., 3600)
+#   echo - set to False in production to reduce logging
+# Example for production:
+#   engine = create_async_engine(
+#       DATABASE_URL,
+#       echo=False,
+#       pool_size=20,
+#       max_overflow=10,
+#       pool_pre_ping=True,
+#       pool_recycle=3600
+#   )
+engine = create_async_engine(DATABASE_URL, echo=False)
 
 
 # Define dependency for session
@@ -236,7 +285,12 @@ def generate_models_root_init(tables: list[TableInfo]) -> str:
             f"from .{table.name} import {model_name}, {model_name}Create, {model_name}Update, create_{table.name}_router"
         )
         all_exports.extend(
-            [f'    "{model_name}"', f'    "{model_name}Create"', f'    "{model_name}Update"', f'    "create_{table.name}_router"']
+            [
+                f'    "{model_name}"',
+                f'    "{model_name}Create"',
+                f'    "{model_name}Update"',
+                f'    "create_{table.name}_router"',
+            ]
         )
 
     return "\n".join(imports) + "\n\n__all__ = [\n" + ",\n".join(all_exports) + "\n]\n"
@@ -286,7 +340,9 @@ def _extract_enums_from_text(dbml_content: str) -> dict[str, list[str]]:
     return enums
 
 
-def generate_all_files(dbml_content: str, admin_auth_enabled: bool = False) -> Dict[str, str]:
+def generate_all_files(
+    dbml_content: str, admin_auth_enabled: bool = False
+) -> Dict[str, str]:
     """
     Generate all application files from DBML content.
 
@@ -307,7 +363,9 @@ def generate_all_files(dbml_content: str, admin_auth_enabled: bool = False) -> D
         model_dir = f"models/{table.name}"
 
         # Create model.py
-        files[f"{model_dir}/model.py"] = generate_single_model(table, tables, enums=enums)
+        files[f"{model_dir}/model.py"] = generate_single_model(
+            table, tables, enums=enums
+        )
 
         # Create crud.py
         files[f"{model_dir}/crud.py"] = generate_crud_router(table)
@@ -322,7 +380,9 @@ def generate_all_files(dbml_content: str, admin_auth_enabled: bool = False) -> D
         files["models/enums.py"] = generate_enums_file(enums)
 
     # Create admin.py
-    files["admin.py"] = generate_admin_views(tables, admin_auth_enabled=admin_auth_enabled)
+    files["admin.py"] = generate_admin_views(
+        tables, admin_auth_enabled=admin_auth_enabled
+    )
 
     # Create main.py
     files["main.py"] = generate_main_app(tables)

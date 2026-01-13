@@ -5,17 +5,21 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "aiosqlite>=0.22.1",
-    "fastapi[all]>=0.128.0",
-    "fastcrud>=0.20.1",
     "pydbml>=1.2.1",
-    "sqladmin>=0.22.0",
-    "sqlmodel>=0.0.31",
     "typer>=0.17.0",
     "rich>=14.0.0",
     "pydantic>=2.11.1",
     "questionary>=2.0.0",
     "unidiff>=0.7.5",
+]
+
+[project.optional-dependencies]
+runtime = [
+    "aiosqlite>=0.22.1",
+    "fastapi[all]>=0.128.0",
+    "fastcrud>=0.20.1",
+    "sqladmin>=0.22.0",
+    "sqlmodel>=0.0.31",
 ]
 
 [dependency-groups]
@@ -28,6 +32,7 @@ dev = [
 package = true
 
 [project.scripts]
+dbml-to-code = "dbml_to_code.cli:app"
 dbml-code = "dbml_to_code.cli:app"
 
 [build-system]

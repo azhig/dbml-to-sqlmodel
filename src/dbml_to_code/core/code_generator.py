@@ -37,6 +37,12 @@ def generate_single_model(
     """
     enums = enums or {}
 
+    # Collect field descriptions for DESCRIPTIONS dictionary
+    field_descriptions = {}
+    for column in table.columns:
+        if column.note:
+            field_descriptions[column.name] = column.note
+
     # Collect relationships for this table
     table_relationships = []
     related_models = set()  # Track which models need to be imported
@@ -83,6 +89,18 @@ from typing import Optional, TYPE_CHECKING
 
 """
 
+    # Generate DESCRIPTIONS dictionary if there are any field descriptions
+    descriptions_code = ""
+    if field_descriptions:
+        descriptions_code = "# Field descriptions\n"
+        descriptions_code += "DESCRIPTIONS = {\n"
+        for field_name in sorted(field_descriptions.keys()):
+            desc = field_descriptions[field_name]
+            # Escape quotes properly
+            desc_escaped = desc.replace('\\', '\\\\').replace('"', '\\"')
+            descriptions_code += f'    "{field_name}": "{desc_escaped}",\n'
+        descriptions_code += "}\n\n"
+
     # Separate columns into base fields (non-PK, non-FK) and special fields
     model_code = []
 
@@ -122,9 +140,9 @@ from typing import Optional, TYPE_CHECKING
                 if target_table and target_col:
                     field_args.append(f"foreign_key='{target_table}.{target_col}'")
 
-        if column.note:
-            note_escaped = column.note.replace('"', '\\"').replace("'", "\\'")
-            field_args.append(f'description="{note_escaped}"')
+        # Use DESCRIPTIONS dictionary if field has description
+        if column.name in field_descriptions:
+            field_args.append(f'description=DESCRIPTIONS["{column.name}"]')
 
         field_str = f"    {column.name}: {field_type}"
         if field_args:
@@ -165,9 +183,9 @@ from typing import Optional, TYPE_CHECKING
         else:
             field_args.append("primary_key=True")
 
-        if column.note:
-            note_escaped = column.note.replace('"', '\\"').replace("'", "\\'")
-            field_args.append(f'description="{note_escaped}"')
+        # Use DESCRIPTIONS dictionary if field has description
+        if column.name in field_descriptions:
+            field_args.append(f'description=DESCRIPTIONS["{column.name}"]')
 
         field_str = f"    {column.name}: {field_type}"
         if field_args:
@@ -219,9 +237,9 @@ from typing import Optional, TYPE_CHECKING
         field_type = f"Optional[{field_type}]"
 
         field_args = []
-        if column.note:
-            note_escaped = column.note.replace('"', '\\"').replace("'", "\\'")
-            field_args.append(f'description="{note_escaped}"')
+        # Use DESCRIPTIONS dictionary if field has description
+        if column.name in field_descriptions:
+            field_args.append(f'description=DESCRIPTIONS["{column.name}"]')
 
         field_str = f"    {column.name}: {field_type}"
         if field_args:
@@ -236,4 +254,4 @@ from typing import Optional, TYPE_CHECKING
 
     model_code.append("\n".join(update_class_def) + "\n")
 
-    return imports + "\n\n".join(model_code)
+    return imports + descriptions_code + "\n".join(model_code)

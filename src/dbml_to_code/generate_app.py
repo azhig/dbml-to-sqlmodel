@@ -111,7 +111,7 @@ def get_icon_for_table(table_name):
 
         code += f"    class {model_name}Admin(ModelView, model={model_name}):\n"
         code += f"        name = '{model_name}'\n"
-        code += f"        name_plural = '{model_name}s'\n"
+        code += f"        name_plural = '{model_name}'\n"
         code += f"        icon = get_icon_for_table('{table.name}')\n"
         code += (
             f"        column_list = [c.name for c in {model_name}.__table__.columns]\n"
@@ -125,6 +125,19 @@ def get_icon_for_table(table_name):
                 note_escaped = note.replace("'", "\\'")
                 code += f"            '{col_name}': '{note_escaped}',\n"
             code += f"        }}\n"
+
+        # Enable sorting for all columns
+        sortable_columns = [c.name for c in table.columns]
+        code += f"        column_sortable_list = {sortable_columns}\n"
+
+        # Add search for text fields
+        text_types = ['varchar', 'text', 'string', 'str', 'char']
+        searchable_columns = [
+            c.name for c in table.columns
+            if any(t in c.type.lower() for t in text_types)
+        ]
+        if searchable_columns:
+            code += f"        column_searchable_list = {searchable_columns}\n"
 
         code += f"\n    admin.add_view({model_name}Admin)\n\n"
 
@@ -177,7 +190,23 @@ load_dotenv()
 
 DATABASE_URL = "sqlite+aiosqlite:///./database.db"
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+# Database engine with basic configuration suitable for development
+# For production deployments, consider tuning these parameters:
+#   pool_size - number of connections to keep open (default: 5)
+#   max_overflow - max connections beyond pool_size (default: 10)
+#   pool_pre_ping - verify connections before using (recommended for production)
+#   pool_recycle - recycle connections after N seconds (e.g., 3600)
+#   echo - set to False in production to reduce logging
+# Example for production:
+#   engine = create_async_engine(
+#       DATABASE_URL,
+#       echo=False,
+#       pool_size=20,
+#       max_overflow=10,
+#       pool_pre_ping=True,
+#       pool_recycle=3600
+#   )
+engine = create_async_engine(DATABASE_URL, echo=False)
 
 
 # Define dependency for session

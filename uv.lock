@@ -77,17 +77,21 @@ name = "dbml-to-code"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aiosqlite" },
-    { name = "fastapi", extra = ["all"] },
-    { name = "fastcrud" },
     { name = "pydantic" },
     { name = "pydbml" },
     { name = "questionary" },
     { name = "rich" },
-    { name = "sqladmin" },
-    { name = "sqlmodel" },
     { name = "typer" },
     { name = "unidiff" },
+]
+
+[package.optional-dependencies]
+runtime = [
+    { name = "aiosqlite" },
+    { name = "fastapi", extra = ["all"] },
+    { name = "fastcrud" },
+    { name = "sqladmin" },
+    { name = "sqlmodel" },
 ]
 
 [package.dev-dependencies]
@@ -98,18 +102,19 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiosqlite", specifier = ">=0.22.1" },
-    { name = "fastapi", extras = ["all"], specifier = ">=0.128.0" },
-    { name = "fastcrud", specifier = ">=0.20.1" },
+    { name = "aiosqlite", marker = "extra == 'runtime'", specifier = ">=0.22.1" },
+    { name = "fastapi", extras = ["all"], marker = "extra == 'runtime'", specifier = ">=0.128.0" },
+    { name = "fastcrud", marker = "extra == 'runtime'", specifier = ">=0.20.1" },
     { name = "pydantic", specifier = ">=2.11.1" },
     { name = "pydbml", specifier = ">=1.2.1" },
     { name = "questionary", specifier = ">=2.0.0" },
     { name = "rich", specifier = ">=14.0.0" },
-    { name = "sqladmin", specifier = ">=0.22.0" },
-    { name = "sqlmodel", specifier = ">=0.0.31" },
+    { name = "sqladmin", marker = "extra == 'runtime'", specifier = ">=0.22.0" },
+    { name = "sqlmodel", marker = "extra == 'runtime'", specifier = ">=0.0.31" },
     { name = "typer", specifier = ">=0.17.0" },
     { name = "unidiff", specifier = ">=0.7.5" },
 ]
+provides-extras = ["runtime"]
 
 [package.metadata.requires-dev]
 dev = [

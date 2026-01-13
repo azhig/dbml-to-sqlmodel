@@ -1,13 +1,16 @@
 # DBML to Code Generator
 
-Generate a FastAPI application (SQLModel + FastCRUD + SQLAdmin) from a DBML schema.
+Generate a complete FastAPI application (SQLModel + FastCRUD + SQLAdmin) from your DBML database schema.
 
 ## Features
 
-- Generates models, CRUD routers, and a FastAPI app from DBML
-- Optional SQLAdmin panel generation
-- Preview and report modes to review changes
-- Simple CLI and interactive menu
+- Generate SQLModel models from DBML schema
+- Auto-create CRUD routers with FastCRUD
+- Generate FastAPI application with ready-to-use endpoints
+- Optional SQLAdmin panel
+- Preview mode to review changes before applying
+- Protect user modifications in generated files
+- Interactive CLI and direct commands
 
 ## Requirements
 
@@ -16,100 +19,178 @@ Generate a FastAPI application (SQLModel + FastCRUD + SQLAdmin) from a DBML sche
 
 ## Installation
 
-Use the Makefile for consistent setup:
+### For Code Generation Only
 
 ```bash
-make install
+pip install dbml-to-code
 ```
 
-## Quick start
-
-1. Put your DBML schema in `examples/schema.dbml` (or update the path in settings).
-2. Generate the app:
+### For Running Generated Applications
 
 ```bash
-make generate
+# Install with runtime dependencies
+pip install dbml-to-code[runtime]
+
+# Or install runtime dependencies separately in your project
+pip install fastapi[all] sqlmodel fastcrud sqladmin aiosqlite
 ```
 
-3. Run the generated app:
+## Quick Start
+
+### 1. Create a DBML schema
+
+Create a `schema.dbml` file with your database structure:
+
+```dbml
+Table users {
+  id integer [primary key]
+  username varchar(255) [not null, unique]
+  email varchar(255) [not null, unique]
+  created_at timestamp [default: `now()`]
+}
+
+Table posts {
+  id integer [primary key]
+  title varchar(255) [not null]
+  content text
+  user_id integer [ref: > users.id]
+  created_at timestamp [default: `now()`]
+}
+```
+
+### 2. Generate the application
+
+```bash
+dbml-to-code generate schema.dbml -o output
+```
+
+### 3. Setup environment
 
 ```bash
 cd output
-uv run python main.py
+echo "DATABASE_URL=sqlite+aiosqlite:///./database.db" > .env
+
+# Install runtime dependencies if not already installed
+pip install dbml-to-code[runtime]
 ```
 
-4. Open the admin panel:
-
-```
-http://localhost:8001/admin
-```
-
-## CLI usage
-
-Interactive mode:
+### 4. Run the application
 
 ```bash
-make cli
+python main.py
 ```
 
-Direct commands:
+### 5. Open in browser
+
+- API documentation: `http://localhost:8001/docs`
+- Admin panel: `http://localhost:8001/admin`
+
+## Generated Structure
+
+The generator creates a modular project where each table has its own directory:
+
+```
+output/
+├── main.py              # FastAPI application
+├── admin.py             # SQLAdmin configuration
+├── requirements.txt     # Dependencies
+└── models/
+    ├── __init__.py      # Exports all models
+    ├── users/
+    │   ├── model.py     # SQLModel classes (Users, UsersCreate, UsersUpdate)
+    │   ├── crud.py      # FastCRUD router
+    │   └── __init__.py
+    ├── posts/
+    │   ├── model.py
+    │   ├── crud.py
+    │   └── __init__.py
+    └── ... (one directory per table)
+```
+
+For detailed structure documentation, see [CLI_GUIDE.md](CLI_GUIDE.md#generated-project-structure).
+
+## CLI Usage
+
+For complete CLI documentation, see [CLI_GUIDE.md](CLI_GUIDE.md).
+
+### Quick Commands
 
 ```bash
-uv run dbml-code generate examples/schema.dbml -o output
-uv run dbml-code preview examples/schema.dbml -o output
-uv run dbml-code info examples/schema.dbml -o output
-uv run dbml-code code-to-dbml examples/schema.dbml -o output
-```
+# Interactive mode
+dbml-to-code
 
-## SQLAdmin authentication (optional)
+# Generate application
+dbml-to-code generate schema.dbml -o output
 
-By default, the admin panel is open. You can enable login in the CLI settings or via:
+# Preview changes
+dbml-to-code preview schema.dbml
 
-```bash
-uv run dbml-code generate examples/schema.dbml -o output --admin-auth
-```
+# Show schema info
+dbml-to-code info schema.dbml
 
-Set credentials in a `.env` file next to `output/main.py`:
-
-```env
-ADMIN_USER=admin
-ADMIN_PASS=change-me
-ADMIN_SECRET=replace-this
+# Reverse: code to DBML
+dbml-to-code code-to-dbml output -o schema.dbml
 ```
 
 ## Configuration
 
-The interactive CLI stores settings in `.dbml_to_code` in the project root. You can update:
+### Environment Variables
 
-- schema file path
-- output directory
-- preview defaults
-- overwrite behavior
-- admin auth toggle
+Create a `.env` file in your project directory:
 
-## Notes
-
-- `output/` is generated code and can be regenerated at any time.
-- Files with `# USER_MODIFIED` are protected unless `--force` is used.
-
-## Development
-
-Common commands:
-
-```bash
-make format
-make lint
-make test
+```env
+DATABASE_URL=sqlite+aiosqlite:///./database.db
 ```
 
-## Architecture
+### SQLAdmin Authentication
 
-The project uses a modular architecture with clear separation of concerns:
+To enable admin panel authentication:
 
-- **core/** - Business logic (parsing, code generation, config)
-- **models/** - Data structures (TableInfo, ColumnInfo, AppConfig)
-- **utils/** - Utilities (file operations, diff, formatters, type mapping)
-- **integrations/** - External library adapters (PyDBML)
-- **commands/** - CLI commands (generate, preview, info, code-to-dbml)
+```bash
+dbml-to-code generate schema.dbml --admin-auth
+```
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed documentation.
+Add to your `.env` file:
+
+```env
+ADMIN_USER=admin
+ADMIN_PASS=your-secure-password
+ADMIN_SECRET=your-secret-key-must-be-at-least-32-characters-long
+```
+
+For more configuration options, see [CLI_GUIDE.md](CLI_GUIDE.md).
+
+## Protecting Your Modifications
+
+If you modify generated files and want to prevent them from being overwritten on regeneration, add this comment at the top of the file:
+
+```python
+# USER_MODIFIED
+```
+
+Files with this marker will be protected during regeneration unless you use the `--force` flag.
+
+## Usage Examples
+
+See [CLI_GUIDE.md](CLI_GUIDE.md) for complete examples and workflows.
+
+## Table Relationships
+
+Supported relationship types:
+
+- **One-to-Many**: `ref: > table.column`
+- **Many-to-One**: `ref: < table.column`
+- **One-to-One**: `ref: - table.column`
+
+Example:
+
+```dbml
+Table posts {
+  id integer [primary key]
+  user_id integer [ref: > users.id]  // Many-to-One
+}
+```
+
+## License
+
+MIT

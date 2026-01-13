@@ -1,6 +1,7 @@
 """Interactive CLI for DBML to Code Generator."""
 
 import sys
+import time
 from pathlib import Path
 
 import questionary
@@ -35,25 +36,39 @@ custom_style = Style([
 
 
 def show_welcome(is_first_run: bool):
-    """Show welcome banner."""
+    """Show welcome banner with ASCII art."""
+    # ASCII art logo
+    logo = """
+[bold cyan]
+██████╗ ██████╗ ███╗   ███╗██╗         ████████╗ ██████╗      ██████╗ ██████╗ ██████╗ ███████╗
+██╔══██╗██╔══██╗████╗ ████║██║         ╚══██╔══╝██╔═══██╗    ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+██║  ██║██████╔╝██╔████╔██║██║            ██║   ██║   ██║    ██║     ██║   ██║██║  ██║█████╗
+██║  ██║██╔══██╗██║╚██╔╝██║██║            ██║   ██║   ██║    ██║     ██║   ██║██║  ██║██╔══╝
+██████╔╝██████╔╝██║ ╚═╝ ██║███████╗       ██║   ╚██████╔╝    ╚██████╗╚██████╔╝██████╔╝███████╗
+╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝       ╚═╝    ╚═════╝      ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
+[/bold cyan]"""
+
+    console.print(logo)
+    console.print()
+
     if is_first_run:
         console.print(
             Panel(
-            "[bold cyan]DBML to Code Generator[/bold cyan]\n\n"
-                "Modern FastAPI + SQLModel + FastCRUD generator from DBML schemas\n\n"
-                "[yellow]Welcome! This is the first run.[/yellow]\n"
-            "Created configuration file: [green].dbml_to_code[/green]",
+                "[bold white]Modern FastAPI + SQLModel + FastCRUD generator from DBML schemas[/bold white]\n\n"
+                "[yellow]> Welcome! This is your first run.[/yellow]\n"
+                "[green]> Configuration file created: .dbml_to_code[/green]",
                 border_style="cyan",
-                title="Welcome",
+                title="[bold cyan]First Time Setup[/bold cyan]",
+                subtitle="[dim]Let's get started[/dim]",
             )
         )
     else:
         console.print(
             Panel(
-            "[bold cyan]DBML to Code Generator[/bold cyan]\n\n"
-                "Modern FastAPI + SQLModel + FastCRUD generator from DBML schemas",
+                "[bold white]Modern FastAPI + SQLModel + FastCRUD generator from DBML schemas[/bold white]\n\n"
+                "[dim]Transform your database schemas into production-ready APIs[/dim]",
                 border_style="cyan",
-                title="Welcome",
+                title="[bold cyan]Ready[/bold cyan]",
             )
         )
 
@@ -62,13 +77,16 @@ def run_initial_setup():
     """Run first-time setup to populate settings."""
     config = config_manager.config
 
+    console.print()
     console.print(
         Panel(
-            "[bold cyan]Initial setup[/bold cyan]\n"
-            "You can change these settings later in the settings menu.",
+            "[bold white]Initial Setup[/bold white]\n\n"
+            "[dim]Configure your preferences. You can change these later in the settings menu.[/dim]",
             border_style="cyan",
+            title="[bold cyan]Configuration[/bold cyan]",
         )
     )
+    console.print()
 
     schema_file = questionary.path(
         "Path to DBML schema:",
@@ -113,24 +131,40 @@ def run_initial_setup():
     )
 
 
+def show_menu_header():
+    """Show just the menu header without logo."""
+    console.print()
+    console.print(Panel(
+        "[bold cyan]DBML to Code Generator[/bold cyan]",
+        border_style="cyan",
+    ))
+
 def interactive_menu():
     """Show interactive menu and handle user selection."""
     is_first_run = config_manager.is_first_run()
     config_manager.load()
 
-    show_welcome(is_first_run)
+    # Show welcome logo only once at startup
     if is_first_run:
+        show_welcome(is_first_run)
         run_initial_setup()
+    else:
+        show_welcome(False)
 
     while True:
+        # Always clear screen before showing menu
+        console.clear()
+        show_menu_header()
+
+        console.print()
         choice = questionary.select(
             "What would you like to do?",
             choices=[
-                questionary.Choice("Settings", value="settings"),
-                questionary.Choice("DBML -> Code", value="generate"),
-                questionary.Choice("Code -> DBML", value="code_to_dbml"),
-                questionary.Choice("Report", value="report"),
-                questionary.Choice("Exit", value="exit"),
+                questionary.Choice("[>] Settings            - Configure generator options", value="settings"),
+                questionary.Choice("[>] DBML → Code         - Generate FastAPI from schema", value="generate"),
+                questionary.Choice("[>] Code → DBML         - Extract schema from models", value="code_to_dbml"),
+                questionary.Choice("[>] Report              - View generation statistics", value="report"),
+                questionary.Choice("[x] Exit", value="exit"),
             ],
             use_shortcuts=True,
             use_arrow_keys=True,
@@ -138,8 +172,21 @@ def interactive_menu():
         ).ask()
 
         if choice is None or choice == "exit":
-            console.print("\n[yellow]Exiting. Goodbye.[/yellow]")
+            console.clear()
+            console.print()
+            console.print(Panel(
+                "[bold cyan]Thank you for using DBML to Code![/bold cyan]\n\n"
+                "[dim]Build amazing APIs![/dim]",
+                border_style="cyan",
+            ))
+            console.print()
             break
+
+        # Clear screen and show compact header for results
+        console.clear()
+        console.print("[bold cyan]DBML to Code[/bold cyan]")
+        console.print("[dim]" + "─" * console.width + "[/dim]")
+        console.print()
 
         try:
             if choice == "settings":
@@ -152,10 +199,12 @@ def interactive_menu():
                 handle_report()
         except KeyboardInterrupt:
             console.print("\n[yellow]Operation cancelled[/yellow]")
-            continue
         except Exception as e:
             console.print(f"\n[red]Error: {e}[/red]")
-            continue
+
+        # Show separator after command results
+        console.print()
+        console.print("[dim]" + "─" * console.width + "[/dim]")
 
 
 def handle_settings():
