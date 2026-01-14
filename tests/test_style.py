@@ -5,15 +5,18 @@ import questionary
 from questionary import Style
 
 # Custom style for testing
-test_style = Style([
-    ('qmark', 'fg:#00d7ff bold'),
-    ('question', 'fg:#ffffff bold'),
-    ('answer', 'fg:#00ff87 bold'),
-    ('pointer', 'fg:#ffff00 bold'),
-    ('highlighted', 'fg:#000000 bold bg:#ffff00 underline'),
-    ('selected', 'fg:#00ff87'),
-    ('text', ''),
-])
+test_style = Style(
+    [
+        ("qmark", "fg:#00d7ff bold"),
+        ("question", "fg:#ffffff bold"),
+        ("answer", "fg:#00ff87 bold"),
+        ("pointer", "fg:#ffff00 bold"),
+        ("highlighted", "fg:#000000 bold bg:#ffff00 underline"),
+        ("selected", "fg:#00ff87"),
+        ("text", ""),
+    ]
+)
+
 
 def main():
     choice = questionary.select(
@@ -28,6 +31,7 @@ def main():
     ).ask()
 
     print(f"\nYou selected: {choice}")
+
 
 if __name__ == "__main__":
     main()

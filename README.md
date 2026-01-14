@@ -1,6 +1,41 @@
-# DBML to Code Generator
+```
+██████╗ ██████╗ ███╗   ███╗██╗         ████████╗ ██████╗
+██╔══██╗██╔══██╗████╗ ████║██║         ╚══██╔══╝██╔═══██╗
+██║  ██║██████╔╝██╔████╔██║██║            ██║   ██║   ██║
+██║  ██║██╔══██╗██║╚██╔╝██║██║            ██║   ██║   ██║
+██████╔╝██████╔╝██║ ╚═╝ ██║███████╗       ██║   ╚██████╔╝
+╚═════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝       ╚═╝    ╚═════╝
 
-Generate a complete FastAPI application (SQLModel + FastCRUD + SQLAdmin) from your DBML database schema.
+███████╗ ██████╗ ██╗     ███╗   ███╗ ██████╗ ██████╗ ███████╗██╗
+██╔════╝██╔═══██╗██║     ████╗ ████║██╔═══██╗██╔══██╗██╔════╝██║
+███████╗██║   ██║██║     ██╔████╔██║██║   ██║██║  ██║█████╗  ██║
+╚════██║██║▄▄ ██║██║     ██║╚██╔╝██║██║   ██║██║  ██║██╔══╝  ██║
+███████║╚██████╔╝███████╗██║ ╚═╝ ██║╚██████╔╝██████╔╝███████╗███████╗
+╚══════╝ ╚══▀▀═╝ ╚══════╝╚═╝     ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝╚══════╝
+```
+
+<p align="center" markdown=1>
+  <a href="https://github.com/azhig/dbml_to_crud/actions/workflows/tests.yml">
+    <img src="https://github.com/azhig/dbml_to_crud/actions/workflows/tests.yml/badge.svg" alt="Tests"/>
+  </a>
+  <a href="https://codecov.io/gh/azhig/dbml_to_crud">
+    <img src="https://codecov.io/gh/azhig/dbml_to_crud/branch/main/graph/badge.svg" alt="Coverage"/>
+  </a>
+  <img src="https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue" alt="Python Versions"/>
+  <a href="https://github.com/azhig/dbml_to_crud/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/azhig/dbml_to_crud" alt="License: MIT"/>
+  </a>
+  <a href="https://github.com/astral-sh/ruff">
+    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"/>
+  </a>
+  <a href="https://github.com/pre-commit/pre-commit">
+    <img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit" alt="Pre-commit"/>
+  </a>
+  <img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Code style: ruff"/>
+  <img src="https://img.shields.io/badge/type%20checked-mypy-blue.svg" alt="Type checked: mypy"/>
+</p>
+
+**Generate FastAPI + SQLModel + FastCRUD + SQLAdmin from DBML schema**
 
 ## Features
 
@@ -22,14 +57,14 @@ Generate a complete FastAPI application (SQLModel + FastCRUD + SQLAdmin) from yo
 ### For Code Generation Only
 
 ```bash
-pip install dbml-to-code
+pip install dbml-to-sqlmodel
 ```
 
 ### For Running Generated Applications
 
 ```bash
 # Install with runtime dependencies
-pip install dbml-to-code[runtime]
+pip install dbml-to-sqlmodel[runtime]
 
 # Or install runtime dependencies separately in your project
 pip install fastapi[all] sqlmodel fastcrud sqladmin aiosqlite
@@ -61,7 +96,7 @@ Table posts {
 ### 2. Generate the application
 
 ```bash
-dbml-to-code generate schema.dbml -o output
+dbml-to-sqlmodel generate schema.dbml -o output
 ```
 
 ### 3. Setup environment
@@ -71,7 +106,7 @@ cd output
 echo "DATABASE_URL=sqlite+aiosqlite:///./database.db" > .env
 
 # Install runtime dependencies if not already installed
-pip install dbml-to-code[runtime]
+pip install dbml-to-sqlmodel[runtime]
 ```
 
 ### 4. Run the application
@@ -116,20 +151,20 @@ For complete CLI documentation, see [CLI_GUIDE.md](CLI_GUIDE.md).
 ### Quick Commands
 
 ```bash
-# Interactive mode
-dbml-to-code
+# Interactive CLI mode
+dbml-to-sqlmodel
 
 # Generate application
-dbml-to-code generate schema.dbml -o output
+dbml-to-sqlmodel generate schema.dbml -o output
 
 # Preview changes
-dbml-to-code preview schema.dbml
+dbml-to-sqlmodel preview schema.dbml
 
 # Show schema info
-dbml-to-code info schema.dbml
+dbml-to-sqlmodel info schema.dbml
 
 # Reverse: code to DBML
-dbml-to-code code-to-dbml output -o schema.dbml
+dbml-to-sqlmodel code-to-dbml output -o schema.dbml
 ```
 
 ## Configuration
@@ -147,7 +182,7 @@ DATABASE_URL=sqlite+aiosqlite:///./database.db
 To enable admin panel authentication:
 
 ```bash
-dbml-to-code generate schema.dbml --admin-auth
+dbml-to-sqlmodel generate schema.dbml --admin-auth
 ```
 
 Add to your `.env` file:
@@ -169,6 +204,32 @@ If you modify generated files and want to prevent them from being overwritten on
 ```
 
 Files with this marker will be protected during regeneration unless you use the `--force` flag.
+
+## Development
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+make coverage
+
+# Generate HTML coverage report
+make coverage-html
+# Open htmlcov/index.html in browser
+```
+
+### Code Quality
+
+```bash
+# Format code
+make format
+
+# Lint code
+make lint
+```
 
 ## Usage Examples
 

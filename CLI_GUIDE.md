@@ -1,6 +1,6 @@
 # CLI Usage Guide
 
-Complete guide for using the `dbml-to-code` command-line interface.
+Complete guide for using the `dbml-to-sqlmodel` command-line interface.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ Complete guide for using the `dbml-to-code` command-line interface.
 Install just the generator tool (lightweight, no runtime dependencies):
 
 ```bash
-pip install dbml-to-code
+pip install dbml-to-sqlmodel
 ```
 
 ### For Running Generated Applications
@@ -30,7 +30,7 @@ pip install dbml-to-code
 If you want to run the generated application, install with runtime dependencies:
 
 ```bash
-pip install dbml-to-code[runtime]
+pip install dbml-to-sqlmodel[runtime]
 ```
 
 Or install runtime dependencies separately in your project:
@@ -44,7 +44,7 @@ pip install fastapi[all] sqlmodel fastcrud sqladmin aiosqlite
 Launch the interactive CLI menu:
 
 ```bash
-dbml-to-code
+dbml-to-sqlmodel
 ```
 
 Interactive mode provides a guided experience:
@@ -66,7 +66,7 @@ Generate a complete FastAPI application from DBML schema.
 **Syntax:**
 
 ```bash
-dbml-to-code generate <schema_file> [OPTIONS]
+dbml-to-sqlmodel generate <schema_file> [OPTIONS]
 ```
 
 **Arguments:**
@@ -84,16 +84,16 @@ dbml-to-code generate <schema_file> [OPTIONS]
 
 ```bash
 # Basic generation
-dbml-to-code generate schema.dbml
+dbml-to-sqlmodel generate schema.dbml
 
 # Custom output directory
-dbml-to-code generate schema.dbml -o my_app
+dbml-to-sqlmodel generate schema.dbml -o my_app
 
 # With admin authentication
-dbml-to-code generate schema.dbml --admin-auth
+dbml-to-sqlmodel generate schema.dbml --admin-auth
 
 # Force overwrite protected files
-dbml-to-code generate schema.dbml --force
+dbml-to-sqlmodel generate schema.dbml --force
 ```
 
 **Generated Structure:**
@@ -124,7 +124,7 @@ Preview changes without applying them. Shows which files will be created, modifi
 **Syntax:**
 
 ```bash
-dbml-to-code preview <schema_file> [OPTIONS]
+dbml-to-sqlmodel preview <schema_file> [OPTIONS]
 ```
 
 **Arguments:**
@@ -149,13 +149,13 @@ The preview shows a table with file statuses:
 
 ```bash
 # Preview changes
-dbml-to-code preview schema.dbml
+dbml-to-sqlmodel preview schema.dbml
 
 # Preview with custom output directory
-dbml-to-code preview schema.dbml -o my_app
+dbml-to-sqlmodel preview schema.dbml -o my_app
 
 # Preview, then generate
-dbml-to-code preview schema.dbml && dbml-to-code generate schema.dbml
+dbml-to-sqlmodel preview schema.dbml && dbml-to-sqlmodel generate schema.dbml
 ```
 
 ### info
@@ -165,7 +165,7 @@ Display schema information: tables, columns, types, and relationships.
 **Syntax:**
 
 ```bash
-dbml-to-code info <schema_file>
+dbml-to-sqlmodel info <schema_file>
 ```
 
 **Arguments:**
@@ -183,7 +183,7 @@ Shows:
 **Example:**
 
 ```bash
-dbml-to-code info schema.dbml
+dbml-to-sqlmodel info schema.dbml
 ```
 
 **Sample Output:**
@@ -215,7 +215,7 @@ Reverse conversion: generate DBML schema from existing generated code.
 **Syntax:**
 
 ```bash
-dbml-to-code code-to-dbml <source_dir> [OPTIONS]
+dbml-to-sqlmodel code-to-dbml <source_dir> [OPTIONS]
 ```
 
 **Arguments:**
@@ -231,13 +231,13 @@ dbml-to-code code-to-dbml <source_dir> [OPTIONS]
 
 ```bash
 # Generate DBML from code
-dbml-to-code code-to-dbml output
+dbml-to-sqlmodel code-to-dbml output
 
 # Custom output file
-dbml-to-code code-to-dbml output -o new_schema.dbml
+dbml-to-sqlmodel code-to-dbml output -o new_schema.dbml
 
 # Update existing schema
-dbml-to-code code-to-dbml my_app -o schema.dbml
+dbml-to-sqlmodel code-to-dbml my_app -o schema.dbml
 ```
 
 **Use Cases:**
@@ -591,7 +591,7 @@ class User(SQLModel, table=True):
 Override file protection:
 
 ```bash
-dbml-to-code generate schema.dbml --force
+dbml-to-sqlmodel generate schema.dbml --force
 ```
 
 **Warning:** This will overwrite ALL files, including USER_MODIFIED ones.
@@ -611,20 +611,20 @@ Table users {
 EOF
 
 # 2. Inspect schema
-dbml-to-code info schema.dbml
+dbml-to-sqlmodel info schema.dbml
 
 # 3. Preview generation
-dbml-to-code preview schema.dbml
+dbml-to-sqlmodel preview schema.dbml
 
 # 4. Generate application
-dbml-to-code generate schema.dbml
+dbml-to-sqlmodel generate schema.dbml
 
 # 5. Setup environment
 cd output
 echo "DATABASE_URL=sqlite+aiosqlite:///./database.db" > .env
 
 # 6. Install runtime dependencies (if not installed)
-pip install dbml-to-code[runtime]
+pip install dbml-to-sqlmodel[runtime]
 
 # 7. Run application
 python main.py
@@ -636,13 +636,13 @@ python main.py
 # 1. Modify schema.dbml (add new table/column)
 
 # 2. Preview changes
-dbml-to-code preview schema.dbml -o my_app
+dbml-to-sqlmodel preview schema.dbml -o my_app
 
 # 3. Review what will be updated
 # Protected files (USER_MODIFIED) won't be touched
 
 # 4. Apply changes
-dbml-to-code generate schema.dbml -o my_app
+dbml-to-sqlmodel generate schema.dbml -o my_app
 
 # 5. Restart application
 cd my_app && python main.py
@@ -652,12 +652,12 @@ cd my_app && python main.py
 
 ```bash
 # Development
-dbml-to-code generate schema.dbml -o dev_app
+dbml-to-sqlmodel generate schema.dbml -o dev_app
 cd dev_app
 echo "DATABASE_URL=sqlite+aiosqlite:///./dev.db" > .env
 
 # Production
-dbml-to-code generate schema.dbml -o prod_app --admin-auth
+dbml-to-sqlmodel generate schema.dbml -o prod_app --admin-auth
 cd prod_app
 cat > .env <<EOF
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost/prod_db
@@ -671,24 +671,24 @@ EOF
 
 ```bash
 # Backup current schema
-dbml-to-code code-to-dbml output -o backup_$(date +%Y%m%d).dbml
+dbml-to-sqlmodel code-to-dbml output -o backup_$(date +%Y%m%d).dbml
 
 # Restore from backup
-dbml-to-code generate backup_20260113.dbml -o restored_app
+dbml-to-sqlmodel generate backup_20260113.dbml -o restored_app
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Issue: `dbml-to-code: command not found`**
+**Issue: `dbml-to-sqlmodel: command not found`**
 
 Solution: Ensure the package is installed and in your PATH:
 
 ```bash
-pip install --user dbml-to-code
+pip install --user dbml-to-sqlmodel
 # or
-pipx install dbml-to-code
+pipx install dbml-to-sqlmodel
 ```
 
 **Issue: Import errors when running generated code**
@@ -696,7 +696,7 @@ pipx install dbml-to-code
 Solution: Install runtime dependencies:
 
 ```bash
-pip install dbml-to-code[runtime]
+pip install dbml-to-sqlmodel[runtime]
 ```
 
 **Issue: Files not updating**
@@ -704,7 +704,7 @@ pip install dbml-to-code[runtime]
 Solution: Check for USER_MODIFIED markers. Use preview mode:
 
 ```bash
-dbml-to-code preview schema.dbml
+dbml-to-sqlmodel preview schema.dbml
 ```
 
 **Issue: Admin authentication not working**
@@ -720,13 +720,13 @@ cat .env
 
 ```bash
 # General help
-dbml-to-code --help
+dbml-to-sqlmodel --help
 
 # Command-specific help
-dbml-to-code generate --help
-dbml-to-code preview --help
-dbml-to-code info --help
-dbml-to-code code-to-dbml --help
+dbml-to-sqlmodel generate --help
+dbml-to-sqlmodel preview --help
+dbml-to-sqlmodel info --help
+dbml-to-sqlmodel code-to-dbml --help
 ```
 
 ## Related Documentation

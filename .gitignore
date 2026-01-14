@@ -39,4 +39,4 @@ htmlcov/
 Thumbs.db
 
 .env
-.dbml_to_code
+.dbml_to_sqlmodel
