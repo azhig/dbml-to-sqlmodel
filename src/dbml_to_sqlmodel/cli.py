@@ -2,8 +2,10 @@
 
 import sys
 from pathlib import Path
+from typing import Annotated
 
 import questionary
+import typer
 from questionary import Style
 from rich.console import Console
 from rich.panel import Panel
@@ -18,6 +20,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 console = Console()
 config_manager = ConfigManager()
+
+# Typer app for CLI commands
+cli = typer.Typer(
+    name="dbml-to-sqlmodel",
+    help="Generate SQLModel models and FastAPI CRUD from DBML schemas.",
+    no_args_is_help=False,
+    invoke_without_command=True,
+)
 
 # Custom style for questionary menus with highlighted selection
 custom_style = Style(
@@ -369,15 +379,115 @@ def handle_code_to_dbml():  # pragma: no cover
         console.print("[green]DBML saved[/green]")
 
 
+@cli.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """DBML to SQLModel Generator - interactive mode or subcommands."""
+    if ctx.invoked_subcommand is None:
+        # No subcommand provided, run interactive menu
+        try:
+            interactive_menu()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Exiting. Goodbye.[/yellow]")
+        except Exception as e:
+            console.print(f"\n[red]Unexpected error: {e}[/red]")
+            raise
+
+
+@cli.command("generate")
+def cmd_generate(
+    schema_file: Annotated[
+        Path, typer.Argument(help="Path to DBML schema file", exists=True, dir_okay=False)
+    ],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Output directory")] = Path(
+        "output"
+    ),
+    force: Annotated[
+        bool, typer.Option("--force", "-f", help="Overwrite user-modified files")
+    ] = False,
+    admin_auth: Annotated[
+        bool,
+        typer.Option(
+            "--admin-auth/--no-admin-auth",
+            help="Require login for SQLAdmin panel",
+        ),
+    ] = False,
+):
+    """Generate FastAPI application from DBML schema."""
+    generate.generate_command(
+        schema_file=schema_file,
+        output=output,
+        force=force,
+        admin_auth_enabled=admin_auth,
+    )
+
+
+@cli.command("preview")
+def cmd_preview(
+    schema_file: Annotated[
+        Path, typer.Argument(help="Path to DBML schema file", exists=True, dir_okay=False)
+    ],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Output directory")] = Path(
+        "output"
+    ),
+    show_all: Annotated[bool, typer.Option("--all", "-a", help="Show unchanged files too")] = False,
+    show_new: Annotated[
+        bool, typer.Option("--new", "-n", help="Show content of new files")
+    ] = False,
+):
+    """Preview changes without writing files (shows diff)."""
+    preview.preview_command(
+        schema_file=schema_file,
+        output=output,
+        show_all=show_all,
+        show_new=show_new,
+    )
+
+
+@cli.command("info")
+def cmd_info(
+    schema_file: Annotated[
+        Path, typer.Argument(help="Path to DBML schema file", exists=True, dir_okay=False)
+    ],
+    output: Annotated[Path, typer.Option("--output", "-o", help="Output directory")] = Path(
+        "output"
+    ),
+):
+    """Show generated files and model mismatches."""
+    info.info_command(
+        schema_file=schema_file,
+        output=output,
+    )
+
+
+@cli.command("code-to-dbml")
+def cmd_code_to_dbml(
+    source_dir: Annotated[Path, typer.Argument(help="Directory with generated code")],
+    output: Annotated[Path | None, typer.Option("--output", "-o", help="Output DBML file")] = None,
+):
+    """Generate DBML schema from existing generated code."""
+    # Default output file
+    output_file = output or Path("schema.dbml")
+
+    normalized_dbml, _normalized_existing, changed = code_to_dbml.code_to_dbml_command(
+        schema_file=output_file,
+        output=source_dir,
+    )
+
+    if not changed:
+        console.print("[green]No changes detected[/green]")
+        return
+
+    # Save the DBML file
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    existing_text = output_file.read_text(encoding="utf-8") if output_file.exists() else ""
+    updated_text = apply_dbml_table_updates(existing_text, normalized_dbml)
+    output_file.write_text(updated_text, encoding="utf-8")
+    console.print(f"[green]DBML saved to {output_file}[/green]")
+
+
 def app():
-    """Main entry point for interactive CLI."""
-    try:
-        interactive_menu()
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Exiting. Goodbye.[/yellow]")
-    except Exception as e:
-        console.print(f"\n[red]Unexpected error: {e}[/red]")
-        raise
+    """Main entry point for CLI."""
+    cli()
 
 
 if __name__ == "__main__":  # pragma: no cover

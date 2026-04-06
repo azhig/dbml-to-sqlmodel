@@ -33,19 +33,6 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ## Development Workflow
 
-### Running Tests
-
-```bash
-# Run all tests
-make test
-
-# Run tests with coverage
-make coverage
-
-# Generate HTML coverage report
-make coverage-html
-```
-
 ### Code Quality
 
 **Before committing, code is automatically formatted:**
@@ -59,11 +46,11 @@ Pre-commit hooks will automatically:
 **Manual commands:**
 
 ```bash
+# Sort and organize imports only
+make format-imports
+
 # Format code (includes import sorting)
 make format
-
-# Sort imports only
-make format-imports
 
 # Lint code
 make lint
@@ -74,11 +61,43 @@ make lint-fix
 # Type checking
 make typecheck
 
-# Run ALL checks at once (recommended before PR)
+# Run ALL checks at once (format + lint + typecheck + test)
 make check
 
 # Run all pre-commit hooks manually
 make pre-commit
+```
+
+**Recommended workflow before committing:**
+
+```bash
+# Quick: format and check everything
+make check
+
+# Or run pre-commit hooks (what runs on git commit)
+make pre-commit
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage
+make coverage
+
+# Generate HTML coverage report
+make coverage-html
+
+# Run specific test
+uv run pytest tests/test_parser.py -v
+
+# Run with verbose output
+uv run pytest tests/ -vv
+
+# Run with pdb on failure
+uv run pytest tests/ --pdb
 ```
 
 ### Testing Your Changes
@@ -90,8 +109,39 @@ make generate
 # Preview changes without writing
 make preview
 
+# Show file information
+make info
+
 # Run development server
 make dev
+
+# Show all available commands
+make help
+```
+
+## Pre-commit Hooks
+
+Hooks run **automatically** on `git commit` and will:
+1. **Sort imports** (isort via ruff)
+2. **Auto-fix** linting issues
+3. **Format code** with ruff
+4. **Check types** with mypy
+5. Clean up whitespace, EOF, validate YAML/TOML
+
+**What happens on commit:**
+```bash
+git add .
+git commit -m "feat: your changes"
+# → Pre-commit hooks run automatically
+# → Code is formatted and fixed
+# → If issues found, commit is blocked
+# → Fix issues and commit again
+```
+
+To run manually before committing:
+
+```bash
+make pre-commit
 ```
 
 ## Code Style
@@ -117,8 +167,9 @@ Imports are automatically sorted on commit using Ruff's isort implementation:
 
 ### Code Formatting
 
-- Line length: 100 characters
-- Use double quotes for strings
+- **Line length**: 100 characters
+- **Quotes**: Double quotes
+- **Docstrings**: Google style
 - Follow PEP 8 conventions
 
 ## Commit Messages
@@ -195,6 +246,13 @@ dbml_to_crud/
 └── pyproject.toml           # Project metadata
 ```
 
+## Configuration Files
+
+- `pyproject.toml` - Project metadata, dependencies, tool configs
+- `.pre-commit-config.yaml` - Pre-commit hooks configuration
+- `Makefile` - Development commands
+- `.gitignore` - Git ignore patterns
+
 ## Adding New Features
 
 ### 1. Parser Changes
@@ -217,7 +275,7 @@ If changing generated code:
 If adding new commands:
 - Update `cli.py`
 - Add command to Makefile
-- Update CLI_GUIDE.md
+- Update documentation
 - Add tests
 
 ## Testing Guidelines
@@ -241,12 +299,52 @@ def test_feature_name():
     assert result == expected_output
 ```
 
+## Troubleshooting
+
+### Pre-commit hooks fail
+
+```bash
+# Fix automatically where possible
+make lint-fix
+make format
+
+# Run hooks manually to see errors
+make pre-commit
+```
+
+### Tests fail
+
+```bash
+# Run specific test
+uv run pytest tests/test_parser.py -v
+
+# Run with verbose output
+uv run pytest tests/ -vv
+
+# Run with pdb on failure
+uv run pytest tests/ --pdb
+```
+
+### MyPy errors
+
+Check `pyproject.toml` for ignored modules. Add type hints or ignore specific errors:
+
+```python
+# type: ignore[error-code]
+```
+
 ## Documentation
 
 - Update README.md for user-facing changes
-- Update CLI_GUIDE.md for CLI changes
 - Add docstrings to all public functions
 - Update CHANGELOG.md with your changes
+
+## Resources
+
+- [Ruff Documentation](https://docs.astral.sh/ruff/)
+- [MyPy Documentation](https://mypy.readthedocs.io/)
+- [Pre-commit Documentation](https://pre-commit.com/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
 
 ## Questions?
 

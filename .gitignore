@@ -9,6 +9,9 @@ wheels/
 # Virtual environments
 .venv
 
+# habr
+habr_article.md
+
 # Generated application files
 /output/
 *.db

@@ -7,7 +7,7 @@ Table users {
   id serial [pk, note: 'User ID']
   username text [not null, unique, note: 'Unique username']
   email text [not null, unique, note: 'User email address']
-  password_hash2 text [not null, note: 'Hashed password']
+  password_hash text [not null, note: 'Hashed password']
   full_name text [note: 'Full name of the user']
   bio text [note: 'User biography']
   avatar_url text [note: 'URL to user avatar image']
@@ -77,19 +77,17 @@ Table post_tags {
   Note: 'Many-to-many relationship between posts and tags'
 }
 
-Table comments {
-  id serial [pk, note: 'Comment ID']
-  post_id integer [not null, note: 'Reference to post']
-  author_id integer [note: 'Reference to user (null for anonymous)']
-  parent_id integer [note: 'Reference to parent comment for nested comments']
-  content text [not null, note: 'Comment content']
-  author_name text [note: 'Name for anonymous comments']
-  author_email text [note: 'Email for anonymous comments']
-  is_approved boolean [not null, default: false, note: 'Is comment approved by moderator']
-  created_at timestamp [not null, note: 'Comment creation timestamp']
-  updated_at timestamp [note: 'Last update timestamp']
-
-  Note: 'Post comments'
+Table comments [note: "Post comments"] {
+  id serial [primary key, note: "Comment ID"]
+  post_id integer [not null, ref: > posts.id, note: "Reference to post"]
+  author_id integer [ref: > users.id, note: "Reference to user (null for anonymous)"]
+  parent_id integer [ref: > comments.id, note: "Reference to parent comment for nested comments"]
+  content text [not null, note: "Comment content"]
+  author_name2 text [note: "Name for anonymous comments"]
+  author_email text [note: "Email for anonymous comments"]
+  is_approved boolean [not null, default: False, note: "Is comment approved by moderator"]
+  created_at timestamp [not null, note: "Comment creation timestamp"]
+  updated_at timestamp [note: "Last update timestamp"]
 }
 
 // Relationships

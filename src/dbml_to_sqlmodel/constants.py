@@ -1,7 +1,7 @@
 """Project-wide constants."""
 
 # Default paths
-DEFAULT_SCHEMA_PATH = "schemas/schema.dbml"
+DEFAULT_SCHEMA_PATH = "examples/schema.dbml"
 DEFAULT_OUTPUT_DIR = "output"
 CONFIG_FILE = ".dbml_to_sqlmodel"
 

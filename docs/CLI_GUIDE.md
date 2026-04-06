@@ -84,16 +84,16 @@ dbml-to-sqlmodel generate <schema_file> [OPTIONS]
 
 ```bash
 # Basic generation
-dbml-to-sqlmodel generate schema.dbml
+dbml-to-sqlmodel generate examples/schema.dbml
 
 # Custom output directory
-dbml-to-sqlmodel generate schema.dbml -o my_app
+dbml-to-sqlmodel generate examples/schema.dbml -o my_app
 
 # With admin authentication
-dbml-to-sqlmodel generate schema.dbml --admin-auth
+dbml-to-sqlmodel generate examples/schema.dbml --admin-auth
 
 # Force overwrite protected files
-dbml-to-sqlmodel generate schema.dbml --force
+dbml-to-sqlmodel generate examples/schema.dbml --force
 ```
 
 **Generated Structure:**
@@ -149,13 +149,13 @@ The preview shows a table with file statuses:
 
 ```bash
 # Preview changes
-dbml-to-sqlmodel preview schema.dbml
+dbml-to-sqlmodel preview examples/schema.dbml
 
 # Preview with custom output directory
-dbml-to-sqlmodel preview schema.dbml -o my_app
+dbml-to-sqlmodel preview examples/schema.dbml -o my_app
 
 # Preview, then generate
-dbml-to-sqlmodel preview schema.dbml && dbml-to-sqlmodel generate schema.dbml
+dbml-to-sqlmodel preview examples/schema.dbml && dbml-to-sqlmodel generate schema.dbml
 ```
 
 ### info
@@ -183,7 +183,7 @@ Shows:
 **Example:**
 
 ```bash
-dbml-to-sqlmodel info schema.dbml
+dbml-to-sqlmodel info examples/schema.dbml
 ```
 
 **Sample Output:**
@@ -237,7 +237,7 @@ dbml-to-sqlmodel code-to-dbml output
 dbml-to-sqlmodel code-to-dbml output -o new_schema.dbml
 
 # Update existing schema
-dbml-to-sqlmodel code-to-dbml my_app -o schema.dbml
+dbml-to-sqlmodel code-to-dbml my_app -o examples/schema.dbml
 ```
 
 **Use Cases:**
