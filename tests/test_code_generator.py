@@ -220,3 +220,87 @@ class TestCodeGenerator:
 
         assert "active" in code
         assert "bool" in code
+
+
+def test_generate_single_model_edge_cases():
+    enum_table = TableInfo(
+        name="widgets",
+        columns=[
+            ColumnInfo(
+                name="id",
+                type="bool",
+                primary_key=True,
+                unique=False,
+                nullable=False,
+                note="id note",
+            ),
+            ColumnInfo(
+                name="status",
+                type="status",
+                primary_key=True,
+                unique=False,
+                nullable=False,
+            ),
+        ],
+        note='note """ triple',
+    )
+    rel_table = TableInfo(
+        name="posts",
+        columns=[
+            ColumnInfo(
+                name="user_id",
+                type="integer",
+                primary_key=False,
+                unique=False,
+                nullable=False,
+                references=[("users", "id")],
+            ),
+        ],
+    )
+    nopk_table = TableInfo(
+        name="logs",
+        columns=[
+            ColumnInfo(
+                name="message",
+                type="text",
+                primary_key=False,
+                unique=False,
+                nullable=True,
+            ),
+        ],
+    )
+    all_tables = [enum_table, rel_table, nopk_table]
+    enums = {"status": ["active"]}
+
+    enum_code = generate_single_model(enum_table, all_tables, enums=enums)
+    assert '"""note \\"\\"\\" triple"""' in enum_code
+    assert "DESCRIPTIONS" in enum_code
+    assert 'description=DESCRIPTIONS["id"]' in enum_code
+    assert "status: Status" in enum_code
+
+    rel_code = generate_single_model(rel_table, all_tables, enums=enums)
+    assert "Relationship()" in rel_code
+
+    nopk_code = generate_single_model(nopk_table, all_tables, enums=enums)
+    assert "class Logs(LogsBase, table=True):\n    pass" in nopk_code
+
+
+def test_singularize_branches():
+    """Every branch of the relationship-name singularizer is exercised."""
+    from dbml_to_sqlmodel.core.code_generator import _singularize
+
+    # "ies" -> "y"
+    assert _singularize("categories") == "category"
+    # short "ies" word is left untouched (len <= 3 guard)
+    assert _singularize("ies") == "ie"
+    # "ses"/"xes"/"ches"/"shes"/"zes" -> drop the trailing "es"
+    assert _singularize("statuses") == "status"
+    assert _singularize("boxes") == "box"
+    assert _singularize("batches") == "batch"
+    # plain trailing "s" -> drop it
+    assert _singularize("posts") == "post"
+    # singular nouns ending in ss/us/is are preserved (fallback branch)
+    assert _singularize("status") == "status"
+    assert _singularize("address") == "address"
+    assert _singularize("analysis") == "analysis"
+    assert _singularize("user") == "user"

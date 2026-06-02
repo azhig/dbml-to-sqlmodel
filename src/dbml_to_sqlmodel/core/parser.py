@@ -2,7 +2,10 @@
 
 import re
 import warnings
+from collections.abc import Iterator
 from typing import Any
+
+from ..models.schema import ColumnInfo, RelationshipInfo, TableInfo
 
 # Suppress pyparsing deprecation warnings from pydbml library
 # pydbml uses old pyparsing API (camelCase) which triggers deprecation warnings
@@ -29,10 +32,6 @@ def PyDBML(content: str) -> Any:
         return _PyDBML(content)
 
 
-from ..integrations import setdefaultattr
-from ..models.schema import ColumnInfo, RelationshipInfo, TableInfo
-
-
 def parse_dbml(dbml_content: str) -> list[TableInfo]:
     """Parse DBML content using PyDBML into structured table definitions."""
     raw_types = extract_dbml_types(dbml_content)
@@ -40,35 +39,28 @@ def parse_dbml(dbml_content: str) -> list[TableInfo]:
     parsed = PyDBML(dbml_content)
     tables = []
 
-    # Process references first to handle foreign keys
-    for ref in parsed.refs:  # type: ignore
-        if ref.type == ">":
-            for col in ref.col1:
-                col_refs = setdefaultattr(col, "references", [])
-                col_refs.append(ref)
-        elif ref.type == "<":
-            for col in ref.col2:
-                col_refs = setdefaultattr(col, "references", [])
-                col_refs.append(ref)
+    # Map each source column to the foreign-key refs that originate from it,
+    # keyed by object identity so the PyDBML objects are never mutated.
+    column_refs: dict[int, list] = {}
+    for ref in parsed.refs:
+        source_cols = ref.col1 if ref.type == ">" else ref.col2 if ref.type == "<" else []
+        for col in source_cols:
+            column_refs.setdefault(id(col), []).append(ref)
 
-    for table in parsed.tables:  # type: ignore
+    for table in parsed.tables:
         columns = []
         for column in table.columns:
             col_type = column.type
             if hasattr(col_type, "name"):
-                col_type = col_type.name  # type: ignore
+                col_type = col_type.name
 
             # Handle references
             references = []
-            if hasattr(column, "references"):
-                for ref in column.references:  # type: ignore
-                    if ref.type == ">":
-                        target_table = ref.table2.name
-                        target_col = ref.col2[0].name
-                    else:
-                        target_table = ref.table1.name
-                        target_col = ref.col1[0].name
-                    references.append((target_table, target_col))
+            for ref in column_refs.get(id(column), []):
+                if ref.type == ">":
+                    references.append((ref.table2.name, ref.col2[0].name))
+                else:
+                    references.append((ref.table1.name, ref.col1[0].name))
 
             # Extract note
             note_text = None
@@ -131,9 +123,14 @@ def parse_dbml(dbml_content: str) -> list[TableInfo]:
     return tables
 
 
-def extract_dbml_types(dbml_content: str) -> dict[str, dict[str, str]]:
-    """Extract raw column types from DBML text for stable round-tripping."""
-    table_types: dict[str, dict[str, str]] = {}
+def _iter_column_lines(dbml_content: str) -> Iterator[tuple[str, str]]:
+    """Yield ``(table_name, column_line)`` for each column definition in the text.
+
+    Comments are stripped and table headers / notes / indexes / refs are skipped.
+    This lightweight scan recovers raw types and defaults that PyDBML normalizes
+    away, which is needed for stable round-tripping. Shared by
+    :func:`extract_dbml_types` and :func:`extract_dbml_defaults`.
+    """
     current_table: str | None = None
     pending_table: str | None = None
 
@@ -144,18 +141,15 @@ def extract_dbml_types(dbml_content: str) -> dict[str, dict[str, str]]:
 
         table_match = re.match(r"(?i)^table\s+([A-Za-z_][\w]*)", stripped)
         if table_match and current_table is None:
-            table_name = table_match.group(1)
             if "{" in stripped:
-                current_table = table_name
-                table_types.setdefault(current_table, {})
+                current_table = table_match.group(1)
             else:
-                pending_table = table_name
+                pending_table = table_match.group(1)
             continue
 
         if pending_table and "{" in stripped:
             current_table = pending_table
             pending_table = None
-            table_types.setdefault(current_table, {})
             continue
 
         if current_table:
@@ -163,95 +157,53 @@ def extract_dbml_types(dbml_content: str) -> dict[str, dict[str, str]]:
                 current_table = None
                 continue
 
-            lowered = stripped.lower()
-            if (
-                lowered.startswith("note:")
-                or lowered.startswith("indexes")
-                or lowered.startswith("ref")
-            ):
+            if stripped.lower().startswith(("note:", "indexes", "ref")):
                 continue
 
             line_no_comment = stripped.split("//", 1)[0].strip()
             if not line_no_comment:  # pragma: no cover
                 continue
 
-            parts = line_no_comment.split("[", 1)[0].strip()
-            tokens = parts.split()
-            if len(tokens) < 2:
-                continue
+            yield current_table, line_no_comment
 
-            col_name = tokens[0]
-            col_type = " ".join(tokens[1:])
-            table_types[current_table][col_name] = col_type
 
+def extract_dbml_types(dbml_content: str) -> dict[str, dict[str, str]]:
+    """Extract raw column types from DBML text for stable round-tripping."""
+    table_types: dict[str, dict[str, str]] = {}
+    for table_name, line in _iter_column_lines(dbml_content):
+        table_types.setdefault(table_name, {})
+        tokens = line.split("[", 1)[0].split()
+        if len(tokens) < 2:
+            continue
+        table_types[table_name][tokens[0]] = " ".join(tokens[1:])
     return table_types
 
 
 def extract_dbml_defaults(dbml_content: str) -> dict[str, dict[str, Any]]:
     """Extract raw defaults from DBML text."""
     table_defaults: dict[str, dict[str, Any]] = {}
-    current_table: str | None = None
-    pending_table: str | None = None
-
-    for line in dbml_content.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("//"):
+    for table_name, line in _iter_column_lines(dbml_content):
+        table_defaults.setdefault(table_name, {})
+        if "[" not in line or "]" not in line:
             continue
 
-        table_match = re.match(r"(?i)^table\s+([A-Za-z_][\w]*)", stripped)
-        if table_match and current_table is None:
-            table_name = table_match.group(1)
-            if "{" in stripped:
-                current_table = table_name
-                table_defaults.setdefault(current_table, {})
-            else:
-                pending_table = table_name
+        before_attrs, attrs = line.split("[", 1)
+        attrs = attrs.split("]", 1)[0]
+        tokens = before_attrs.split()
+        if len(tokens) < 2:
             continue
 
-        if pending_table and "{" in stripped:
-            current_table = pending_table
-            pending_table = None
-            table_defaults.setdefault(current_table, {})
-            continue
-
-        if current_table:
-            if stripped.startswith("}"):
-                current_table = None
+        col_name = tokens[0]
+        for part in attrs.split(","):
+            if "default" not in part:
                 continue
-
-            lowered = stripped.lower()
-            if (
-                lowered.startswith("note:")
-                or lowered.startswith("indexes")
-                or lowered.startswith("ref")
-            ):
+            key, sep, value = part.partition(":")
+            if not sep:
+                key, sep, value = part.partition("=")
+            if key.strip() != "default":
                 continue
-
-            line_no_comment = stripped.split("//", 1)[0].strip()
-            if not line_no_comment:  # pragma: no cover
-                continue
-
-            if "[" not in line_no_comment or "]" not in line_no_comment:
-                continue
-
-            before_attrs, attrs = line_no_comment.split("[", 1)
-            attrs = attrs.split("]", 1)[0]
-            tokens = before_attrs.split()
-            if len(tokens) < 2:
-                continue
-
-            col_name = tokens[0]
-            for part in attrs.split(","):
-                if "default" not in part:
-                    continue
-                key, _, value = part.partition(":")
-                if not _:
-                    key, _, value = part.partition("=")
-                if key.strip() != "default":
-                    continue
-                default_value = _parse_default_value(value)
-                table_defaults[current_table][col_name] = default_value
-                break
+            table_defaults[table_name][col_name] = _parse_default_value(value)
+            break
 
     return table_defaults
 

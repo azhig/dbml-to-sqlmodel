@@ -1,6 +1,5 @@
 """Interactive CLI for DBML to SQLModel Generator."""
 
-import sys
 from pathlib import Path
 from typing import Annotated
 
@@ -11,12 +10,10 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from . import __version__
 from .commands import code_to_dbml, generate, info, preview
 from .core import ConfigManager
 from .sqlmodel_to_dbml import apply_dbml_table_updates
-
-# Add parent directory to path to import from src
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 console = Console()
 config_manager = ConfigManager()
@@ -379,8 +376,26 @@ def handle_code_to_dbml():  # pragma: no cover
         console.print("[green]DBML saved[/green]")
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        console.print(f"dbml-to-sqlmodel {__version__}")
+        raise typer.Exit()
+
+
 @cli.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
+def main(
+    ctx: typer.Context,
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version",
+            "-V",
+            help="Show the version and exit.",
+            callback=_version_callback,
+            is_eager=True,
+        ),
+    ] = None,
+):
     """DBML to SQLModel Generator - interactive mode or subcommands."""
     if ctx.invoked_subcommand is None:
         # No subcommand provided, run interactive menu

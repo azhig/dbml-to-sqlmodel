@@ -175,7 +175,6 @@ toml = [
 
 [[package]]
 name = "dbml-to-sqlmodel"
-version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
@@ -191,6 +190,7 @@ runtime = [
     { name = "aiosqlite" },
     { name = "fastapi", extra = ["all"] },
     { name = "fastcrud" },
+    { name = "greenlet" },
     { name = "sqladmin" },
     { name = "sqlmodel" },
 ]
@@ -209,6 +209,7 @@ requires-dist = [
     { name = "aiosqlite", marker = "extra == 'runtime'", specifier = ">=0.22.1" },
     { name = "fastapi", extras = ["all"], marker = "extra == 'runtime'", specifier = ">=0.128.0" },
     { name = "fastcrud", marker = "extra == 'runtime'", specifier = ">=0.20.1" },
+    { name = "greenlet", marker = "extra == 'runtime'", specifier = ">=3.0.0" },
     { name = "pydantic", specifier = ">=2.11.1" },
     { name = "pydbml", specifier = ">=1.2.1" },
     { name = "questionary", specifier = ">=2.0.0" },

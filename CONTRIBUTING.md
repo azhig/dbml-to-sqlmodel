@@ -6,8 +6,8 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd dbml_to_crud
+   git clone https://github.com/azhig/dbml-to-sqlmodel.git
+   cd dbml-to-sqlmodel
    ```
 
 2. **Install uv** (if not already installed)
@@ -232,18 +232,22 @@ docs(readme): update installation instructions
 ## Project Structure
 
 ```
-dbml_to_crud/
+dbml-to-sqlmodel/
 ├── src/
 │   └── dbml_to_sqlmodel/     # Main package
 │       ├── cli.py            # CLI entry point
-│       ├── parser.py         # DBML parser
 │       ├── generator.py      # Code generator
-│       ├── config.py         # Configuration
-│       └── templates/        # Jinja2 templates
+│       ├── core/             # Parser, config, code generation
+│       ├── commands/         # CLI subcommands (generate, preview, info, code-to-dbml)
+│       ├── integrations/     # pydbml adapter
+│       ├── models/           # Internal data models
+│       ├── utils/            # Helpers (diff, formatters, file manager)
+│       └── templates/        # Code templates
 ├── tests/                    # Test files
 ├── examples/                 # Example schemas
+├── docs/                     # Documentation
 ├── Makefile                  # Development commands
-└── pyproject.toml           # Project metadata
+└── pyproject.toml            # Project metadata
 ```
 
 ## Configuration Files

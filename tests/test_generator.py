@@ -1,17 +1,22 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from dbml_to_sqlmodel.core import parser as parser_module
 from dbml_to_sqlmodel.core.parser import parse_dbml
 from dbml_to_sqlmodel.generator import (
     generate_admin_views,
     generate_all_files,
+    generate_enums_file,
     generate_main_app,
     generate_requirements,
 )
 from dbml_to_sqlmodel.models.config_models import AppConfig
+from dbml_to_sqlmodel.models.schema import ColumnInfo, TableInfo
 
 DBML_SAMPLE = """
 Table users {
@@ -132,3 +137,108 @@ def test_generate_all_files_multiple_tables():
     # Should have model files for both tables
     assert any("users" in path for path in files.keys())
     assert any("posts" in path for path in files.keys())
+
+
+def test_extract_enums_and_admin_views():
+    dbml = """
+    Enum status {
+        active
+        disabled
+    }
+    """
+    enums = parser_module.parse_dbml_enums(dbml)
+    assert enums == {"status": ["active", "disabled"]}
+
+    tables = parser_module.parse_dbml("Table users {\n    id integer [pk]\n}\n")
+    auth_code = generate_admin_views(tables, admin_auth_enabled=True)
+    no_auth_code = generate_admin_views(tables, admin_auth_enabled=False)
+    assert "AuthenticationBackend" in auth_code
+    assert "AuthenticationBackend" not in no_auth_code
+
+
+def test_admin_views_labels_and_searchable():
+    table = TableInfo(
+        name="users",
+        columns=[
+            ColumnInfo(
+                name="name",
+                type="text",
+                primary_key=False,
+                unique=False,
+                nullable=False,
+                note="Full name",
+            ),
+            ColumnInfo(
+                name="age",
+                type="integer",
+                primary_key=False,
+                unique=False,
+                nullable=True,
+            ),
+        ],
+    )
+    code = generate_admin_views([table], admin_auth_enabled=False)
+    assert "column_labels" in code
+    assert "column_searchable_list" in code
+
+
+def test_generate_admin_views_labels_and_searchable():
+    table = TableInfo(
+        name="users",
+        columns=[
+            ColumnInfo(
+                name="name",
+                type="varchar",
+                primary_key=False,
+                unique=False,
+                nullable=False,
+                note="Full name",
+            ),
+            ColumnInfo(
+                name="age",
+                type="integer",
+                primary_key=False,
+                unique=False,
+                nullable=True,
+            ),
+        ],
+    )
+    code = generate_admin_views([table], admin_auth_enabled=True)
+    assert "column_labels" in code
+    assert "column_searchable_list" in code
+
+
+def test_generator_enums_and_invalid_values():
+    enums = parser_module.parse_dbml_enums(
+        """
+        enum status {
+            active,
+            1st-place
+            // comment
+        }
+        """
+    )
+    assert enums == {"status": ["active", "1st-place"]}
+
+    content = generate_enums_file({"status": ["active", "1st-place"]})
+    assert "class Status" in content
+    assert "VALUE_1ST_PLACE" in content
+
+
+def test_generate_all_files_with_enums():
+    dbml = """
+    Enum status {
+        active
+    }
+    Table users {
+        id integer [pk]
+        status status
+    }
+    """
+    files = generate_all_files(dbml, admin_auth_enabled=False)
+    assert "models/enums.py" in files
+
+
+def test_generate_all_files_no_tables():
+    with pytest.raises(ValueError):
+        generate_all_files("// empty")

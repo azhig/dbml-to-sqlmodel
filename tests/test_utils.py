@@ -9,6 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dbml_to_sqlmodel.constants import USER_FILE_MARKER
+from dbml_to_sqlmodel.models.file_info import FileInfo, FileStatus
+from dbml_to_sqlmodel.utils import diff as diff_module
 from dbml_to_sqlmodel.utils.diff import (
     apply_diff_to_file,
     generate_diff,
@@ -346,3 +348,50 @@ class TestFormatters:
             "unchanged.py": ("unchanged", False),
         }
         print_file_status_table(files_status)
+
+
+def test_file_info_status_tuple():
+    info_obj = FileInfo("a.py", FileStatus.CREATED, True)
+    assert info_obj.status_tuple == ("created", True)
+
+
+def test_diff_helpers(tmp_path, monkeypatch):
+    diff_module.print_diff("", "file.txt")
+    diff_module.print_diff("-a\n+b", "file.txt")
+
+    file_path = tmp_path / "file.txt"
+    assert diff_module.apply_diff_to_file(file_path, "old", "new") is True
+    assert file_path.read_text(encoding="utf-8") == "new"
+
+    assert diff_module.apply_diff_to_file(file_path, "new", "new") is False
+
+    original_generate_diff = diff_module.generate_diff
+    monkeypatch.setattr(diff_module, "generate_diff", lambda *_args, **_kwargs: "")
+    file_path.write_text("old", encoding="utf-8")
+    assert diff_module.apply_diff_to_file(file_path, "old", "new") is False
+
+    monkeypatch.setattr(diff_module, "generate_diff", original_generate_diff)
+
+    file_path.write_text("a\nb\nc\n", encoding="utf-8")
+    assert diff_module.apply_diff_to_file(file_path, "a\nb\nc\n", "a\nx\nc\n") is True
+
+    file_path.write_text("z\nb\ny\n", encoding="utf-8")
+    assert diff_module.apply_diff_to_file(file_path, "a\nb\nc\n", "a\nx\nc\n") is True
+
+    file_path.write_text("a\nb\nz\nc\nd\n", encoding="utf-8")
+    assert diff_module.apply_diff_to_file(file_path, "a\nb\nc\nd\n", "a\nx\ny\nd\n") is True
+
+    file_path.write_text("q\nw\n", encoding="utf-8")
+    assert diff_module.apply_diff_to_file(file_path, "a\nb\n", "a\nx\n") is False
+
+    file_path.write_text("", encoding="utf-8")
+    assert diff_module.apply_diff_to_file(file_path, "", "a\n") is False
+
+    class Boom(Exception):
+        pass
+
+    def raise_patch(_text):
+        raise Boom("fail")
+
+    monkeypatch.setattr(diff_module, "PatchSet", raise_patch)
+    assert diff_module.apply_diff_to_file(file_path, "a\n", "b\n") is False

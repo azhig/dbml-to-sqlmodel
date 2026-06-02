@@ -1,14 +1,12 @@
 """Generator functions for creating FastAPI application files."""
 
-import re
-
 from .core import generate_single_model, parse_dbml, parse_dbml_enums, to_class_name
 from .models import TableInfo
 
 
 def generate_crud_router(table: TableInfo) -> str:
     """Generate CRUD router for a single table."""
-    model_name = table.name.capitalize()
+    model_name = to_class_name(table.name)
     router_name = f"{table.name}_router"
 
     return f"""from fastcrud import crud_router
@@ -35,11 +33,12 @@ def create_{table.name}_router(get_session_func):
 def generate_admin_views(tables: list[TableInfo], admin_auth_enabled: bool = False) -> str:
     """Generate SQLAdmin views for all tables."""
     imports = "\n".join(
-        [f"from models.{table.name} import {table.name.capitalize()}" for table in tables]
+        [f"from models.{table.name} import {to_class_name(table.name)}" for table in tables]
     )
 
     if admin_auth_enabled:
         admin_imports = """import os
+import secrets
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
@@ -48,9 +47,13 @@ from starlette.middleware.sessions import SessionMiddleware
         auth_block = """class AdminAuth(AuthenticationBackend):
     async def login(self, request):
         form = await request.form()
-        if (
-            form.get("username") == os.getenv("ADMIN_USER")
-            and form.get("password") == os.getenv("ADMIN_PASS")
+        username = str(form.get("username") or "")
+        password = str(form.get("password") or "")
+        expected_user = os.getenv("ADMIN_USER") or ""
+        expected_pass = os.getenv("ADMIN_PASS") or ""
+        # Constant-time comparison to avoid leaking credentials via timing
+        if secrets.compare_digest(username, expected_user) and secrets.compare_digest(
+            password, expected_pass
         ):
             request.session.update({"admin": True})
             return True
@@ -107,7 +110,7 @@ def get_icon_for_table(table_name):
 
 {auth_block}{init_admin_header}"""
     for table in tables:
-        model_name = table.name.capitalize()
+        model_name = to_class_name(table.name)
 
         code += f"    class {model_name}Admin(ModelView, model={model_name}):\n"
         code += f"        name = '{model_name}'\n"
@@ -152,20 +155,24 @@ def generate_main_app(tables: list[TableInfo]) -> str:
     )
     router_includes = "\n".join([f"app.include_router({table.name}_router)" for table in tables])
 
-    return f"""from fastapi import FastAPI
-from sqlalchemy.ext.asyncio import create_async_engine
-from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import SQLModel
+    return f"""import os
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
+
+from fastapi import FastAPI
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 from dotenv import load_dotenv
 
 
 load_dotenv()
 
 
-DATABASE_URL = "sqlite+aiosqlite:///./database.db"
+# Read the database URL from the environment (.env), with a sensible default.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./database.db")
 
-# Database engine with basic configuration suitable for development
+# Database engine with basic configuration suitable for development.
 # For production deployments, consider tuning these parameters:
 #   pool_size - number of connections to keep open (default: 5)
 #   max_overflow - max connections beyond pool_size (default: 10)
@@ -190,23 +197,23 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-app = FastAPI()
-
-
-# Create database tables
-async def init_db():
+# Create database tables on startup using the modern lifespan API
+async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
-@app.on_event("startup")
-async def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     await init_db()
+    yield
 
 
 # Import router factories AFTER get_session is defined
 {router_imports}
 from admin import init_admin
+
+app = FastAPI(lifespan=lifespan)
 
 # Create CRUD routers with session dependency
 {router_creates}
@@ -231,19 +238,20 @@ if __name__ == "__main__":
 
 def generate_requirements() -> str:
     """Generate requirements.txt content."""
-    return """fastapi>=0.104.0
-sqlmodel[async]>=0.0.14
-sqladmin>=1.4.0
-fastcrud>=0.6.0
-uvicorn[standard]>=0.23.0
-aiosqlite>=0.19.0
+    return """fastapi[all]>=0.128.0
+sqlmodel>=0.0.31
+sqladmin>=0.22.0
+fastcrud>=0.20.1
+uvicorn[standard]>=0.30.0
+aiosqlite>=0.20.0
 python-dotenv>=1.0.0
+greenlet>=3.0.0
 """
 
 
 def generate_model_init(table: TableInfo) -> str:
     """Generate __init__.py for model directory."""
-    model_name = table.name.capitalize()
+    model_name = to_class_name(table.name)
     return f"""from .model import {model_name}, {model_name}Create, {model_name}Update
 from .crud import create_{table.name}_router
 
@@ -262,7 +270,7 @@ def generate_models_root_init(tables: list[TableInfo]) -> str:
     all_exports = []
 
     for table in tables:
-        model_name = table.name.capitalize()
+        model_name = to_class_name(table.name)
         imports.append(
             f"from .{table.name} import {model_name}, {model_name}Create, {model_name}Update, create_{table.name}_router"
         )
@@ -295,33 +303,6 @@ def generate_enums_file(enums: dict[str, list[str]]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _extract_enums_from_text(dbml_content: str) -> dict[str, list[str]]:
-    enums: dict[str, list[str]] = {}
-    current: str | None = None
-
-    for line in dbml_content.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("//"):
-            continue
-
-        enum_match = re.match(r"(?i)^enum\s+([A-Za-z_][\w]*)", stripped)
-        if enum_match and current is None:
-            enum_name = enum_match.group(1)
-            enums.setdefault(enum_name, [])
-            current = enum_name
-            continue
-
-        if current:
-            if "}" in stripped:
-                current = None
-                continue
-            value = stripped.split("//", 1)[0].strip().strip(",")
-            if value:
-                enums[current].append(value)
-
-    return enums
-
-
 def generate_all_files(dbml_content: str, admin_auth_enabled: bool = False) -> dict[str, str]:
     """
     Generate all application files from DBML content.
@@ -330,9 +311,9 @@ def generate_all_files(dbml_content: str, admin_auth_enabled: bool = False) -> d
         Dict mapping relative file paths to their content
     """
     tables = parse_dbml(dbml_content)
+    # parse_dbml_enums already parses enums from the raw text first, then falls
+    # back to PyDBML, so no extra text-extraction pass is needed here.
     enums = parse_dbml_enums(dbml_content)
-    if not enums:
-        enums = _extract_enums_from_text(dbml_content)
     if not tables:
         raise ValueError("No tables found in DBML file")
 

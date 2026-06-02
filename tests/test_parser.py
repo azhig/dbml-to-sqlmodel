@@ -4,6 +4,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from dbml_to_sqlmodel.core import parser as parser_module
 from dbml_to_sqlmodel.core.parser import parse_dbml
 
 
@@ -249,3 +250,153 @@ def test_parse_bidirectional_relationship():
 
     assert len(author_refs) > 0
     assert len(editor_refs) > 0
+
+
+def test_extract_dbml_types_and_defaults():
+    dbml = """
+    // comment
+    Table users
+    {
+        id integer [default: 1]
+        name varchar(255) [default: "bob"]
+        active boolean [default: true]
+        disabled boolean [default: false]
+        ratio float [default: 1.5]
+        weird integer [nodefault=3]
+        // inside comment
+        invalid_only_name
+        note: 'ignored'
+        indexes {
+            name
+        }
+    }
+    Ref: users.id > other.id
+    """
+    types = parser_module.extract_dbml_types(dbml)
+    defaults = parser_module.extract_dbml_defaults(dbml)
+
+    assert types["users"]["name"] == "varchar(255)"
+    assert defaults["users"]["id"] == 1
+    assert defaults["users"]["name"] == "bob"
+    assert defaults["users"]["active"] is True
+    assert defaults["users"]["disabled"] is False
+    assert defaults["users"]["ratio"] == 1.5
+
+
+def test_parse_dbml_enums_from_text():
+    dbml = """
+    enum status {
+        active,
+        disabled // trailing
+    }
+    """
+    enums = parser_module.parse_dbml_enums(dbml)
+    assert enums == {"status": ["active", "disabled"]}
+
+
+def test_parse_dbml_enums_missing_name(monkeypatch):
+    class FakeEnum:
+        def __init__(self, name, items):
+            self.name = name
+            self.items = items
+
+    class FakeItem:
+        def __init__(self, name):
+            self.name = name
+
+    class FakeParsed:
+        enums = [FakeEnum(None, [FakeItem("skip")]), FakeEnum("Status", [FakeItem("active")])]
+
+    monkeypatch.setattr(parser_module, "_parse_dbml_enums_from_text", lambda _text: {})
+    monkeypatch.setattr(parser_module, "PyDBML", lambda _text: FakeParsed())
+
+    enums = parser_module.parse_dbml_enums("enum status { active }")
+    assert enums == {"Status": ["active"]}
+
+
+def test_parse_dbml_with_fake_pydbml(monkeypatch):
+    class FakeType:
+        def __init__(self, name):
+            self.name = name
+
+    class NoteNoText:
+        def __init__(self, value):
+            self.value = value
+
+        def __str__(self):
+            return self.value
+
+    class FakeColumn:
+        def __init__(
+            self, name, col_type, pk=False, unique=False, not_null=False, default=None, note=None
+        ):
+            self.name = name
+            self.type = col_type
+            self.pk = pk
+            self.unique = unique
+            self.not_null = not_null
+            self.default = default
+            self.note = note
+
+    class FakeTable:
+        def __init__(self, name, columns, note=None):
+            self.name = name
+            self.columns = columns
+            self.note = note
+
+    class FakeRef:
+        def __init__(self, ref_type, col1, col2, table1, table2):
+            self.type = ref_type
+            self.col1 = col1
+            self.col2 = col2
+            self.table1 = table1
+            self.table2 = table2
+
+    users_id = FakeColumn("id", FakeType("int"), pk=True, note=NoteNoText("id note"))
+    posts_user_id = FakeColumn("user_id", "integer", not_null=True)
+
+    users_table = FakeTable("users", [users_id], note=NoteNoText("users note"))
+    posts_table = FakeTable("posts", [posts_user_id])
+
+    ref_forward = FakeRef(">", [posts_user_id], [users_id], posts_table, users_table)
+    ref_reverse = FakeRef("<", [posts_user_id], [users_id], posts_table, users_table)
+
+    class FakeParsed:
+        refs = [ref_forward, ref_reverse]
+        tables = [users_table, posts_table]
+
+    monkeypatch.setattr(parser_module, "PyDBML", lambda _text: FakeParsed())
+
+    dbml = """
+    Table users {
+        id integer [default: 2]
+    }
+    Table posts {
+        user_id integer
+    }
+    """
+    tables = parser_module.parse_dbml(dbml)
+
+    users = next(t for t in tables if t.name == "users")
+    posts = next(t for t in tables if t.name == "posts")
+
+    assert users.note == "users note"
+    assert users.columns[0].note == "id note"
+    assert users.columns[0].type == "integer"
+    assert users.columns[0].default == 2
+    assert posts.columns[0].references == [("users", "id")]
+    assert users.columns[0].references == [("posts", "user_id")]
+
+
+def test_parse_dbml_enums_pydbml_branch(monkeypatch):
+    dbml = """
+    Enum status {
+        active
+        disabled
+    }
+    """
+
+    monkeypatch.setattr(parser_module, "_parse_dbml_enums_from_text", lambda _text: {})
+    enums = parser_module.parse_dbml_enums(dbml)
+
+    assert enums["status"] == ["active", "disabled"]

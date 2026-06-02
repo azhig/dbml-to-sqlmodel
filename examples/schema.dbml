@@ -79,11 +79,11 @@ Table post_tags {
 
 Table comments [note: "Post comments"] {
   id serial [primary key, note: "Comment ID"]
-  post_id integer [not null, ref: > posts.id, note: "Reference to post"]
-  author_id integer [ref: > users.id, note: "Reference to user (null for anonymous)"]
-  parent_id integer [ref: > comments.id, note: "Reference to parent comment for nested comments"]
+  post_id integer [not null, note: "Reference to post"]
+  author_id integer [note: "Reference to user (null for anonymous)"]
+  parent_id integer [note: "Reference to parent comment for nested comments"]
   content text [not null, note: "Comment content"]
-  author_name2 text [note: "Name for anonymous comments"]
+  author_name text [note: "Name for anonymous comments"]
   author_email text [note: "Email for anonymous comments"]
   is_approved boolean [not null, default: False, note: "Is comment approved by moderator"]
   created_at timestamp [not null, note: "Comment creation timestamp"]

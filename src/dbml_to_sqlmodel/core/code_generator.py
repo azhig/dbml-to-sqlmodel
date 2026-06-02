@@ -3,12 +3,27 @@
 from typing import Any
 
 from ..models.schema import TableInfo
-from ..utils.type_mapping import get_python_type
+from ..utils.type_mapping import get_datetime_imports, get_python_type
 
 
 def to_class_name(name: str) -> str:
     """Convert snake_case names to PascalCase."""
     return "".join(part.capitalize() for part in name.split("_") if part)
+
+
+def _singularize(name: str) -> str:
+    """Best-effort singularization for relationship attribute names.
+
+    Handles the common English plural endings without corrupting singular
+    nouns that happen to end in ``s`` (e.g. ``status`` stays ``status``).
+    """
+    if name.endswith("ies") and len(name) > 3:
+        return name[:-3] + "y"
+    if name.endswith(("ses", "xes", "zes", "ches", "shes")):
+        return name[:-2]
+    if name.endswith("s") and not name.endswith(("ss", "us", "is")):
+        return name[:-1]
+    return name
 
 
 def _format_default_value(value: Any) -> str:
@@ -43,23 +58,31 @@ def generate_single_model(
         if column.note:
             field_descriptions[column.name] = column.note
 
-    # Collect relationships for this table
+    # Collect relationships for this table.
+    # related_tables holds the *snake_case* target table names (used for both the
+    # sibling module path and, via to_class_name, the referenced class name).
     table_relationships = []
-    related_models = set()  # Track which models need to be imported
+    related_tables: set[str] = set()
     enum_types = {to_class_name(col.type) for col in table.columns if col.type in enums}
 
     for column in table.columns:
         if column.references:
             target_table, target_col = column.references[0]
             if target_table != table.name or target_col != column.name:
-                rel_name = target_table.rstrip("s")
+                rel_name = _singularize(target_table)
                 table_relationships.append((column.name, rel_name, target_table))
-                related_models.add(target_table.capitalize())
+                related_tables.add(target_table)
 
     # Check if uuid is needed (for string primary keys)
     needs_uuid = any(
         col.primary_key and get_python_type(col.type) == "str" for col in table.columns
     )
+
+    # Standard-library datetime imports needed for temporal columns
+    used_python_types = {
+        get_python_type(col.type) for col in table.columns if col.type not in enums
+    }
+    datetime_imports = get_datetime_imports(used_python_types)
 
     # Generate imports with TYPE_CHECKING block
     sqlmodel_imports = ["SQLModel", "Field"]
@@ -69,18 +92,19 @@ def generate_single_model(
     imports = f"""from sqlmodel import {", ".join(sqlmodel_imports)}
 from typing import Optional, TYPE_CHECKING
 """
+    if datetime_imports:
+        imports += f"from datetime import {', '.join(datetime_imports)}\n"
     if enum_types:
         imports += f"from ..enums import {', '.join(sorted(enum_types))}\n"
     if needs_uuid:
         imports += "import uuid\n"
     imports += "\n"
 
-    if related_models:
+    if related_tables:
         imports += "if TYPE_CHECKING:\n"
-        for model in sorted(related_models):
-            # Import from sibling module
-            model_module = model.lower()
-            imports += f"    from ..{model_module}.model import {model}\n"
+        for target_table in sorted(related_tables):
+            # Import the related model class from its sibling module
+            imports += f"    from ..{target_table}.model import {to_class_name(target_table)}\n"
         imports += "\n"
     else:
         imports += """if TYPE_CHECKING:
@@ -104,7 +128,8 @@ from typing import Optional, TYPE_CHECKING
     model_code = []
 
     # Generate Base class with common fields
-    base_class_name = f"{table.name.capitalize()}Base"
+    table_class_name = to_class_name(table.name)
+    base_class_name = f"{table_class_name}Base"
     base_class_def = [f"class {base_class_name}(SQLModel):"]
     has_base_fields = False
 
@@ -156,7 +181,6 @@ from typing import Optional, TYPE_CHECKING
     model_code.append("\n".join(base_class_def) + "\n")
 
     # Generate main table model (inherits from Base)
-    table_class_name = table.name.capitalize()
     class_def = [f"class {table_class_name}({base_class_name}, table=True):"]
     if table.note:
         note_escaped = table.note.replace('"""', '\\"\\"\\"')
@@ -199,7 +223,7 @@ from typing import Optional, TYPE_CHECKING
         else:
             class_def.append("")
         for fk_col, rel_name, target_table in table_relationships:
-            target_class = target_table.capitalize()
+            target_class = to_class_name(target_table)
             is_nullable = any(c.name == fk_col and c.nullable for c in table.columns)
             rel_type = f'Optional["{target_class}"]' if is_nullable else f'"{target_class}"'
             class_def.append(f"    {rel_name}: {rel_type} = Relationship()")
