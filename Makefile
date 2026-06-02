@@ -1,4 +1,4 @@
-.PHONY: help install cli generate preview info run dev clean db-reset format format-imports lint lint-fix typecheck check pre-commit pre-commit-install fresh restart full-reset
+.PHONY: help install cli generate preview info run-deps run dev clean db-reset format format-imports lint lint-fix typecheck check pre-commit pre-commit-install fresh restart full-reset
 
 # Output colors
 GREEN := \033[0;32m
@@ -27,10 +27,14 @@ preview: ## Show diff without writing files
 info: ## Show generated files and mismatches
 	uv run dbml-to-sqlmodel info examples/schema.dbml
 
-run: ## Run server (production)
+run-deps: ## Install runtime dependencies for the generated app (fastapi, sqlmodel, greenlet, ...)
+	uv sync --extra runtime
+	@echo "$(GREEN)OK: runtime dependencies installed$(NC)"
+
+run: run-deps ## Run server (production)
 	cd output && uv run python main.py
 
-dev: ## Run server in development mode (hot reload)
+dev: run-deps ## Run server in development mode (hot reload)
 	cd output && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8001
 
 clean: ## Remove generated files and caches

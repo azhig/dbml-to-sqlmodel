@@ -17,15 +17,26 @@ _PYTHON_TO_DBML_TYPES = {
     "bool": "bool",
     "float": "float",
     "dict": "json",
+    "datetime": "timestamp",
+    "date": "date",
+    "time": "time",
 }
 
 _DBML_TYPE_EQUIVALENCE = {
     "integer": {"int", "integer", "serial", "serial4", "serial8", "bigserial", "bigint"},
-    "text": {"text", "varchar", "string", "date", "datetime", "timestamp"},
+    "text": {"text", "varchar", "string"},
     "bool": {"bool", "boolean"},
     "float": {"float", "double", "decimal"},
     "json": {"json"},
+    "timestamp": {"timestamp", "timestamptz", "datetime"},
+    "date": {"date"},
+    "time": {"time"},
 }
+
+
+def _as_optional_str(value: object) -> str | None:
+    """Narrow a parsed Field kwarg value to ``str | None``."""
+    return value if isinstance(value, str) else None
 
 
 def _canonical_dbml_type(dbml_type: str) -> str:
@@ -67,7 +78,7 @@ def _annotation_to_type(annotation: ast.expr) -> tuple[str, bool]:
 
 
 def _parse_field_kwargs(
-    call: ast.Call, dict_constants: dict[str, dict] = None
+    call: ast.Call, dict_constants: dict[str, dict] | None = None
 ) -> dict[str, object]:
     """Parse Field() keyword arguments.
 
@@ -129,7 +140,7 @@ def _extract_dict_constants(tree: ast.Module) -> dict[str, dict]:
 
 
 def _extract_columns(
-    class_def: ast.ClassDef, dict_constants: dict[str, dict] = None
+    class_def: ast.ClassDef, dict_constants: dict[str, dict] | None = None
 ) -> list[_ParsedColumn]:
     """Extract columns from a ClassDef node.
 
@@ -164,10 +175,10 @@ def _extract_columns(
                 nullable=is_optional,
                 primary_key=bool(field_kwargs.get("primary_key", False)),
                 unique=bool(field_kwargs.get("unique", False)),
-                foreign_key=field_kwargs.get("foreign_key"),
-                description=field_kwargs.get("description"),
+                foreign_key=_as_optional_str(field_kwargs.get("foreign_key")),
+                description=_as_optional_str(field_kwargs.get("description")),
                 default=field_kwargs.get("default"),
-                default_factory=field_kwargs.get("default_factory"),
+                default_factory=_as_optional_str(field_kwargs.get("default_factory")),
             )
         )
     return columns

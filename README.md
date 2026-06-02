@@ -15,15 +15,20 @@
 ```
 
 <p align="center" markdown=1>
-  <a href="https://github.com/azhig/dbml_to_crud/actions/workflows/tests.yml">
-    <img src="https://github.com/azhig/dbml_to_crud/actions/workflows/tests.yml/badge.svg" alt="Tests"/>
+  <a href="https://pypi.org/project/dbml-to-sqlmodel/">
+    <img src="https://img.shields.io/pypi/v/dbml-to-sqlmodel.svg" alt="PyPI version"/>
   </a>
-  <a href="https://codecov.io/gh/azhig/dbml_to_crud">
-    <img src="https://codecov.io/gh/azhig/dbml_to_crud/branch/main/graph/badge.svg" alt="Coverage"/>
+  <a href="https://pypi.org/project/dbml-to-sqlmodel/">
+    <img src="https://img.shields.io/pypi/pyversions/dbml-to-sqlmodel.svg" alt="Python Versions"/>
   </a>
-  <img src="https://img.shields.io/badge/python-3.11%20|%203.12%20|%203.13-blue" alt="Python Versions"/>
-  <a href="https://github.com/azhig/dbml_to_crud/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/azhig/dbml_to_crud" alt="License: MIT"/>
+  <a href="https://github.com/azhig/dbml-to-sqlmodel/actions/workflows/tests.yml">
+    <img src="https://github.com/azhig/dbml-to-sqlmodel/actions/workflows/tests.yml/badge.svg" alt="Tests"/>
+  </a>
+  <a href="https://codecov.io/gh/azhig/dbml-to-sqlmodel">
+    <img src="https://codecov.io/gh/azhig/dbml-to-sqlmodel/branch/main/graph/badge.svg" alt="Coverage"/>
+  </a>
+  <a href="https://github.com/azhig/dbml-to-sqlmodel/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/azhig/dbml-to-sqlmodel" alt="License: MIT"/>
   </a>
   <a href="https://github.com/astral-sh/ruff">
     <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"/>
@@ -31,50 +36,57 @@
   <a href="https://github.com/pre-commit/pre-commit">
     <img src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit" alt="Pre-commit"/>
   </a>
-  <img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Code style: ruff"/>
   <img src="https://img.shields.io/badge/type%20checked-mypy-blue.svg" alt="Type checked: mypy"/>
 </p>
 
-**Generate FastAPI + SQLModel + FastCRUD + SQLAdmin from DBML schema**
+**Generate FastAPI + SQLModel + FastCRUD + SQLAdmin applications from a DBML schema.**
+
+`dbml-to-sqlmodel` turns a [DBML](https://dbml.org/) database schema into a ready-to-run,
+modular FastAPI project: SQLModel models, FastCRUD routers, an optional SQLAdmin panel,
+and a wired-up application — in a single command.
 
 ## Features
 
-- Generate SQLModel models from DBML schema
-- Auto-create CRUD routers with FastCRUD
-- Generate FastAPI application with ready-to-use endpoints
-- Optional SQLAdmin panel
-- Preview mode to review changes before applying
-- Protect user modifications in generated files
+- Generate SQLModel models from a DBML schema
+- Auto-generate CRUD routers powered by [FastCRUD](https://github.com/igorbenav/fastcrud)
+- Produce a FastAPI application with ready-to-use endpoints
+- Optional [SQLAdmin](https://github.com/aminalaee/sqladmin) admin panel
+- Preview mode to inspect changes before applying them
+- Protection for your manual edits in generated files (`USER_MODIFIED` marker)
+- Reverse conversion: generated code back to DBML
 - Interactive CLI and direct commands
 
 ## Requirements
 
 - Python 3.11+
-- uv (recommended) or any Python environment manager
+- [uv](https://docs.astral.sh/uv/) (recommended) or any other Python environment manager
 
 ## Installation
 
-### For Code Generation Only
+### Code generation only
 
 ```bash
 pip install dbml-to-sqlmodel
 ```
 
-### For Running Generated Applications
+### To run the generated applications
 
 ```bash
 # Install with runtime dependencies
-pip install dbml-to-sqlmodel[runtime]
+pip install "dbml-to-sqlmodel[runtime]"
 
-# Or install runtime dependencies separately in your project
-pip install fastapi[all] sqlmodel fastcrud sqladmin aiosqlite
+# Or install the runtime dependencies separately in your project
+pip install "fastapi[all]" sqlmodel fastcrud sqladmin aiosqlite
+
+# Or, when working inside this repository
+uv sync --extra runtime
 ```
 
 ## Quick Start
 
 ### 1. Create a DBML schema
 
-Create a `schema.dbml` file with your database structure:
+Create a `schema.dbml` file describing your database. For example:
 
 ```dbml
 Table users {
@@ -93,38 +105,63 @@ Table posts {
 }
 ```
 
+![DBML schema](https://raw.githubusercontent.com/azhig/dbml-to-sqlmodel/main/docs/img/dbml.png)
+
 ### 2. Generate the application
 
 ```bash
 dbml-to-sqlmodel generate schema.dbml -o output
 ```
 
-### 3. Setup environment
+Or launch the interactive mode:
+
+```bash
+dbml-to-sqlmodel
+# or the alternative command
+dbml2sm
+```
+
+![Interactive CLI](https://raw.githubusercontent.com/azhig/dbml-to-sqlmodel/main/docs/img/cli.png)
+
+After generation, all SQLModel objects and their `FastCRUD` routers are created
+automatically in the target directory.
+
+### 3. Configure the environment
 
 ```bash
 cd output
 echo "DATABASE_URL=sqlite+aiosqlite:///./database.db" > .env
 
-# Install runtime dependencies if not already installed
-pip install dbml-to-sqlmodel[runtime]
+# Install the runtime dependencies if they are not installed yet
+pip install "dbml-to-sqlmodel[runtime]"
 ```
 
 ### 4. Run the application
 
 ```bash
 python main.py
+
+# From this repository you can also run it via Make.
+# `make run` first installs the runtime dependencies (uv sync --extra runtime)
+# and then starts the server; `make dev` does the same with hot reload.
+make run
 ```
 
-### 5. Open in browser
+### 5. Open it in the browser
 
 - API documentation: `http://localhost:8001/docs`
-- Admin panel: `http://localhost:8001/admin`
+
+![API docs](https://raw.githubusercontent.com/azhig/dbml-to-sqlmodel/main/docs/img/docs.png)
+
+- SQLAdmin panel: `http://localhost:8001/admin`
+
+![Admin panel](https://raw.githubusercontent.com/azhig/dbml-to-sqlmodel/main/docs/img/admin.png)
 
 ## Generated Structure
 
-The generator creates a modular project where each table has its own directory:
+The generator produces a modular project with a dedicated directory per table:
 
-```
+```text
 output/
 ├── main.py              # FastAPI application
 ├── admin.py             # SQLAdmin configuration
@@ -142,36 +179,97 @@ output/
     └── ... (one directory per table)
 ```
 
-For detailed structure documentation, see [CLI_GUIDE.md](CLI_GUIDE.md#generated-project-structure).
+For a detailed description of the structure, see the
+[CLI Guide](https://github.com/azhig/dbml-to-sqlmodel/blob/main/docs/CLI_GUIDE.md).
+
+## Using It in Your Own Project
+
+`dbml-to-sqlmodel` is a **code generator**: you need it while developing (to scaffold
+and regenerate code from your schema), but the running application never imports it.
+The recommended setup is therefore:
+
+- add the generator itself as a **development** dependency, and
+- add the libraries the generated app uses as your project's **runtime** dependencies.
+
+### 1. Add the generator as a dev dependency
+
+```bash
+# uv (recommended)
+uv add --dev dbml-to-sqlmodel
+
+# Poetry
+poetry add --group dev dbml-to-sqlmodel
+
+# pip (e.g. into requirements-dev.txt)
+pip install dbml-to-sqlmodel
+```
+
+### 2. Add the runtime libraries the generated app needs
+
+The generated project imports FastAPI, SQLModel, FastCRUD, SQLAdmin and an async
+database driver. Add them as regular (runtime) dependencies of your project:
+
+```bash
+uv add "fastapi[all]" sqlmodel fastcrud sqladmin aiosqlite greenlet
+```
+
+> `greenlet` is required by SQLAlchemy's async engine and is **not** auto-installed
+> on every platform/Python combination, so add it explicitly — otherwise the app
+> fails to start with `the greenlet library is required`.
+
+### 3. Recommended workflow
+
+1. Keep `schema.dbml` under version control and treat it as the single source of truth.
+2. Regenerate the code whenever the schema changes:
+   ```bash
+   uv run dbml-to-sqlmodel generate schema.dbml -o output
+   ```
+3. Preview the changes before applying them to an existing project:
+   ```bash
+   uv run dbml-to-sqlmodel preview schema.dbml -o output
+   ```
+4. Protect any file you edit by hand with a `# USER_MODIFIED` marker (see
+   [Protecting Your Modifications](#protecting-your-modifications)); such files are
+   kept on regeneration unless you pass `--force`.
+5. If you adjusted the models by hand, you can sync the schema back from the code:
+   ```bash
+   uv run dbml-to-sqlmodel code-to-dbml output -o schema.dbml
+   ```
+6. Commit both `schema.dbml` and the generated code so the repository stays reproducible.
 
 ## CLI Usage
 
-For complete CLI documentation, see [CLI_GUIDE.md](CLI_GUIDE.md).
+Full CLI reference: [CLI Guide](https://github.com/azhig/dbml-to-sqlmodel/blob/main/docs/CLI_GUIDE.md).
 
 ### Quick Commands
+
+Everywhere `dbml-to-sqlmodel` can be replaced with the shorter `dbml2sm`.
 
 ```bash
 # Interactive CLI mode
 dbml-to-sqlmodel
 
-# Generate application
+# Generate the application
 dbml-to-sqlmodel generate schema.dbml -o output
 
 # Preview changes
 dbml-to-sqlmodel preview schema.dbml
 
-# Show schema info
+# Schema information
 dbml-to-sqlmodel info schema.dbml
 
-# Reverse: code to DBML
+# Reverse conversion: code -> DBML
 dbml-to-sqlmodel code-to-dbml output -o schema.dbml
+
+# Show the installed version
+dbml-to-sqlmodel --version
 ```
 
 ## Configuration
 
 ### Environment Variables
 
-Create a `.env` file in your project directory:
+Create a `.env` file in the project root:
 
 ```env
 DATABASE_URL=sqlite+aiosqlite:///./database.db
@@ -179,13 +277,13 @@ DATABASE_URL=sqlite+aiosqlite:///./database.db
 
 ### SQLAdmin Authentication
 
-To enable admin panel authentication:
+To enable authentication for the admin panel:
 
 ```bash
 dbml-to-sqlmodel generate schema.dbml --admin-auth
 ```
 
-Add to your `.env` file:
+Add the following to `.env`:
 
 ```env
 ADMIN_USER=admin
@@ -193,47 +291,21 @@ ADMIN_PASS=your-secure-password
 ADMIN_SECRET=your-secret-key-must-be-at-least-32-characters-long
 ```
 
-For more configuration options, see [CLI_GUIDE.md](CLI_GUIDE.md).
+![Admin login](https://raw.githubusercontent.com/azhig/dbml-to-sqlmodel/main/docs/img/admin_login.png)
+
+Other configuration options are described in the
+[CLI Guide](https://github.com/azhig/dbml-to-sqlmodel/blob/main/docs/CLI_GUIDE.md).
 
 ## Protecting Your Modifications
 
-If you modify generated files and want to prevent them from being overwritten on regeneration, add this comment at the top of the file:
+If you edit generated files and want to protect them from being overwritten on
+regeneration, add the following comment at the top of the file:
 
 ```python
 # USER_MODIFIED
 ```
 
-Files with this marker will be protected during regeneration unless you use the `--force` flag.
-
-## Development
-
-### Running Tests
-
-```bash
-# Run all tests
-make test
-
-# Run tests with coverage
-make coverage
-
-# Generate HTML coverage report
-make coverage-html
-# Open htmlcov/index.html in browser
-```
-
-### Code Quality
-
-```bash
-# Format code
-make format
-
-# Lint code
-make lint
-```
-
-## Usage Examples
-
-See [CLI_GUIDE.md](CLI_GUIDE.md) for complete examples and workflows.
+Files with this marker are not overwritten unless you pass the `--force` flag.
 
 ## Table Relationships
 
@@ -252,6 +324,19 @@ Table posts {
 }
 ```
 
+## Documentation
+
+- [CLI Guide](https://github.com/azhig/dbml-to-sqlmodel/blob/main/docs/CLI_GUIDE.md) — full command reference and usage examples
+- [Changelog](https://github.com/azhig/dbml-to-sqlmodel/blob/main/CHANGELOG.md)
+- [Contributing](https://github.com/azhig/dbml-to-sqlmodel/blob/main/CONTRIBUTING.md)
+
+## Contributing
+
+Contributions are welcome! Please read the
+[contributing guidelines](https://github.com/azhig/dbml-to-sqlmodel/blob/main/CONTRIBUTING.md)
+before opening a pull request.
+
 ## License
 
-MIT
+This project is licensed under the terms of the
+[MIT License](https://github.com/azhig/dbml-to-sqlmodel/blob/main/LICENSE).

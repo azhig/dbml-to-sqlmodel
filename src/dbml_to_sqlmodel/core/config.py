@@ -3,6 +3,8 @@
 import json
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from ..constants import CONFIG_FILE
 from ..models.config_models import AppConfig
 
@@ -25,8 +27,8 @@ class ConfigManager:
             try:
                 data = json.loads(self.config_path.read_text(encoding="utf-8"))
                 self._config = AppConfig(**data)
-            except Exception:
-                # If config is corrupted, create new one
+            except (json.JSONDecodeError, ValidationError, TypeError, OSError):
+                # If the config is corrupted or unreadable, recreate the default one
                 self._config = AppConfig()
                 self.save()
         else:

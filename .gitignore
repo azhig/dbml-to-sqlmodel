@@ -19,7 +19,7 @@ habr_article.md
 *.db-shm
 *.db-wal
 
-# Generated files in root (legacy - если остались)
+# Generated files in root
 /models.py
 /admin.py
 /crud/
@@ -35,6 +35,7 @@ habr_article.md
 .pytest_cache/
 .ruff_cache/
 .coverage
+.mypy_cache
 htmlcov/
 
 # OS

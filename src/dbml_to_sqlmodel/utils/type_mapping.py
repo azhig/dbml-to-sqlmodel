@@ -14,14 +14,19 @@ TYPE_MAPPING: dict[str, str] = {
     "string": "str",
     "bool": "bool",
     "boolean": "bool",
-    "date": "str",
-    "datetime": "str",
-    "timestamp": "str",
+    "date": "date",
+    "datetime": "datetime",
+    "timestamp": "datetime",
+    "timestamptz": "datetime",
+    "time": "time",
     "float": "float",
     "double": "float",
     "decimal": "float",
     "json": "dict",
 }
+
+# Python types that require an import from the standard library ``datetime`` module.
+DATETIME_TYPES: frozenset[str] = frozenset({"datetime", "date", "time"})
 
 
 def get_python_type(dbml_type: str) -> str:
@@ -34,6 +39,19 @@ def get_python_type(dbml_type: str) -> str:
         Python type string (defaults to "str" if not found)
     """
     return TYPE_MAPPING.get(dbml_type.lower(), "str")
+
+
+def get_datetime_imports(python_types: set[str]) -> list[str]:
+    """Return the sorted ``datetime`` names that must be imported for these types.
+
+    Args:
+        python_types: Set of Python type names used in a generated module
+
+    Returns:
+        Sorted list of names to import from the ``datetime`` module
+        (e.g. ``["date", "datetime"]``)
+    """
+    return sorted(DATETIME_TYPES & python_types)
 
 
 def is_auto_increment_type(dbml_type: str) -> bool:
